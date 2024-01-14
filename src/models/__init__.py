@@ -1,0 +1,1 @@
+from .vq_gan_3d_module import VQGAN

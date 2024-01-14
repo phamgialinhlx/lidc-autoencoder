@@ -1,6 +1,7 @@
 _target_: src.data.lidc_datamodule.LIDCDataModule
 data_dir: '/mnt/work/Code/LIDC-IDRI-Preprocessing/data/'
 batch_size: 1
+image_size: 128
 train_val_test_split: [9, 1, 1]
 num_workers: 0
 pin_memory: False

@@ -6,11 +6,12 @@ import glob
 import os
 
 class LIDCDataset(Dataset):
-    def __init__(self, root_dir='../LIDC', augmentation=False):
+    def __init__(self, root_dir='../LIDC', augmentation=False, transforms=None):
         self.root_dir = root_dir
         self.paths = []
         self.paths = self.paths + self.get_paths(root_dir) + self.get_paths(os.path.join(root_dir, 'Clean'))
         self.augmentation = augmentation
+        self.transforms = transforms
 
     def get_paths(self, dir):
         image_path = os.path.join(dir, 'Image')
@@ -41,6 +42,10 @@ class LIDCDataset(Dataset):
         
         imageout = torch.from_numpy(img.copy()).float()
         imageout = imageout.unsqueeze(0)
+        
+        if self.transforms is not None:
+            # Apply additional transformations if provided
+            imageout = self.transforms(imageout)
 
         return {'data': imageout}
 

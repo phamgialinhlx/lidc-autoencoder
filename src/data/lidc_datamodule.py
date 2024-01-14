@@ -3,20 +3,22 @@ from typing import Any, Dict, Optional, Tuple
 import hydra
 import torch
 from lightning import LightningDataModule
+from torchvision.transforms import transforms
 from torch.utils.data import DataLoader, Dataset, random_split
 from omegaconf import DictConfig
 
 import rootutils
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-from datasets import LIDCDataset
+from src.data.datasets import LIDCDataset
 
 class LIDCDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = 'data/lidc',
-        train_val_test_split: Tuple[int, int, int] = (9, 1, 1),
         batch_size: int = 1,
+        image_size: int = 128,
+        train_val_test_split: Tuple[int, int, int] = (9, 1, 1),
         num_workers: int = 0,
         pin_memory: bool = False,
     ) -> None:
@@ -29,10 +31,13 @@ class LIDCDataModule(LightningDataModule):
         self.save_hyperparameters(logger=False)
 
         # # data transformations
-        # self.transforms = transforms.Compose(
-        #     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        # )
+        t = []
+        if image_size != 128:
+            t.append(
+                transforms.Resize(size = [image_size, image_size], antialias=True)
+            )
 
+        self.transforms = transforms.Compose(t)
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
@@ -70,7 +75,7 @@ class LIDCDataModule(LightningDataModule):
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            dataset = LIDCDataset(root_dir=self.hparams.data_dir)
+            dataset = LIDCDataset(root_dir=self.hparams.data_dir, transforms=self.transforms)
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=dataset,
                 lengths=self.hparams.train_val_test_split,
@@ -145,6 +150,7 @@ class LIDCDataModule(LightningDataModule):
 )
 def main(cfg: DictConfig):
     print(cfg)
+    cfg.image_size = 64
     datamodule: LIDCDataModule = hydra.utils.instantiate(cfg)
     datamodule.setup()
     print('Number of samples in train set:', len(datamodule.train_dataloader()))
