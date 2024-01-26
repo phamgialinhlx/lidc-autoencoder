@@ -1,0 +1,4 @@
+_target_: src.models.components.diffusion.unet.Unet3D
+dim: 32
+dim_mults: [1, 2, 4]
+channels: 8

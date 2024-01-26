@@ -1,0 +1,6 @@
+defaults:
+  - override /data: lidc
+  - override /model: vq_gan_3d
+  - override /callbacks: autoencoder
+  - override /trainer: default
+  - override /logger: wandb

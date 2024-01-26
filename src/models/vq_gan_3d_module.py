@@ -370,7 +370,7 @@ class VQGAN(LightningModule):
                 _, _, x, x_rec = self(x, log_image=True)
         else:
             _, _, x, x_rec = self(x, log_image=True)
-        
+
         log["inputs"] = x
         log["reconstructions"] = x_rec
         #log['mean_org'] = batch['mean_org']
