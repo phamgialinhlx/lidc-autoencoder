@@ -21,3 +21,4 @@ no_random_restart: False
 norm_type: "group"
 padding_type: "replicate"
 num_groups: 32
+use_ema: True

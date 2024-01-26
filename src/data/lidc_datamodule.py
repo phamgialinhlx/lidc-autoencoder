@@ -157,7 +157,7 @@ def main(cfg: DictConfig):
     print('Number of samples in validation set:', len(datamodule.val_dataloader()))
     print('Number of samples in test set:', len(datamodule.test_dataloader()))
     print('Shape of a sample:', datamodule.train_dataloader().dataset[0]['data'].shape)
-
+    print('Data range: ', datamodule.train_dataloader().dataset[0]['data'].min(), datamodule.train_dataloader().dataset[0]['data'].max())
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,7 @@ defaults:
   - override /data: lidc
   - override /model: vq_gan_3d
   - override /callbacks: autoencoder
-  - override /trainer: gpu
+  - override /trainer: default
   - override /logger: wandb
 
 tags: ["autoencoder", "vqgan_3d", "lidc"]
@@ -17,6 +17,7 @@ task_name: "train autoencoder"
 data:
   train_val_test_split: [9, 1, 1]
   image_size: 64
+  batch_size: 1
 
 model:
   embedding_dim: 8
@@ -30,3 +31,20 @@ model:
 logger: 
   wandb:
     name: "vq_gan_3d_dev"
+
+callbacks:
+  metrics_logger:
+    ssim: 
+      _target_: pytorch_msssim.SSIM
+      data_range: 1
+      size_average: True
+      channel: 1
+    msssim: 
+      _target_: pytorch_msssim.MS_SSIM
+      data_range: 1 
+      size_average: True
+      channel: 1
+      win_size: 3
+
+trainer:
+  max_epochs: 5

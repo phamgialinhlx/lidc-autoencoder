@@ -1,0 +1,6 @@
+metrics_logger:
+  _target_: src.callbacks.metrics_logger.MetricsLogger
+  ssim: null
+  msssim: null
+  mean: 0.5
+  std: 0.5

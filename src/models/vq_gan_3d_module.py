@@ -1,4 +1,5 @@
 from typing import Any
+from contextlib import contextmanager
 import torch
 from lightning import LightningModule
 import hydra
@@ -7,6 +8,7 @@ import torch.nn.functional as F
 from omegaconf import DictConfig
 
 import rootutils
+from src.utils.ema import LitEma
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from src.models.components.vqgan import Encoder, Decoder, SamePadConv3d, Codebook, LPIPS, NLayerDiscriminator, NLayerDiscriminator3D
@@ -47,9 +49,12 @@ class VQGAN(LightningModule):
             no_random_restart: bool = False,
             norm_type: str = "group",
             padding_type: str = "replicate",
-            num_groups: int = 32
-            ):
+            num_groups: int = 32,
+            use_ema: bool = True
+        ):
+
         super().__init__()
+        self.save_hyperparameters()
         self.automatic_optimization = False
         self.embedding_dim = embedding_dim
         self.n_codes = n_codes
@@ -113,7 +118,26 @@ class VQGAN(LightningModule):
         self.perceptual_weight = perceptual_weight
 
         self.l1_weight = l1_weight
-        self.save_hyperparameters()
+
+        self.use_ema = use_ema
+        if self.use_ema:
+            self.model_ema = LitEma(self)
+            print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
+    
+    @contextmanager
+    def ema_scope(self, context=None):
+        if self.use_ema:
+            self.model_ema.store(self.parameters())
+            self.model_ema.copy_to(self)
+            if context is not None:
+                print(f"{context}: Switched to EMA weights")
+        try:
+            yield None
+        finally:
+            if self.use_ema:
+                self.model_ema.restore(self.parameters())
+                if context is not None:
+                    print(f"{context}: Restored training weights")
 
     def encode(self, x, include_embeddings=False, quantize=True):
         h = self.pre_vq_conv(self.encoder(x))
@@ -250,6 +274,10 @@ class VQGAN(LightningModule):
         perceptual_loss = self.perceptual_model(
             frames, frames_recon) * self.perceptual_weight
         return recon_loss, x_recon, vq_output, perceptual_loss
+    
+    def on_train_batch_end(self, *args, **kwargs):
+        if self.use_ema:
+            self.model_ema(self)
 
     def training_step(self, batch, batch_idx):
         x = batch['data']
@@ -273,7 +301,13 @@ class VQGAN(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
-        recon_loss, _, vq_output, perceptual_loss = self.forward(x)
+        if self.use_ema:
+            with self.ema_scope():
+                recon_loss, _, vq_output, perceptual_loss = self.forward(x)
+        else:
+            recon_loss, _, vq_output, perceptual_loss = self.forward(x)
+        
+
         self.log('val/recon_loss', recon_loss, prog_bar=True)
         self.log('val/perceptual_loss', perceptual_loss, prog_bar=True)
         self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)
@@ -282,7 +316,14 @@ class VQGAN(LightningModule):
 
     def test_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
-        recon_loss, _, vq_output, perceptual_loss = self.forward(x)
+        
+        if self.use_ema:
+            with self.ema_scope():
+                recon_loss, _, vq_output, perceptual_loss = self.forward(x)
+        else:
+            recon_loss, _, vq_output, perceptual_loss = self.forward(x)
+        
+
         self.log('test/recon_loss', recon_loss, prog_bar=True)
         self.log('test/perceptual_loss', perceptual_loss, prog_bar=True)
         self.log('test/perplexity', vq_output['perplexity'], prog_bar=True)
@@ -307,7 +348,13 @@ class VQGAN(LightningModule):
         log = dict()
         x = batch['data']
         x = x.to(self.device)
-        frames, frames_rec, _, _ = self(x, log_image=True)
+        
+        if self.use_ema:
+            with self.ema_scope():
+                frames, frames_rec, _, _ = self(x, log_image=True)
+        else:
+            frames, frames_rec, _, _ = self(x, log_image=True)
+        
         log["inputs"] = frames
         log["reconstructions"] = frames_rec
         #log['mean_org'] = batch['mean_org']
@@ -317,7 +364,13 @@ class VQGAN(LightningModule):
     def log_videos(self, batch, **kwargs):
         log = dict()
         x = batch['data']
-        _, _, x, x_rec = self(x, log_image=True)
+        
+        if self.use_ema:
+            with self.ema_scope():
+                _, _, x, x_rec = self(x, log_image=True)
+        else:
+            _, _, x, x_rec = self(x, log_image=True)
+        
         log["inputs"] = x
         log["reconstructions"] = x_rec
         #log['mean_org'] = batch['mean_org']
