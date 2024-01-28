@@ -15,7 +15,7 @@ tags: ["autoencoder", "vqgan_3d", "lidc"]
 task_name: "train autoencoder"
 
 data:
-  train_val_test_split: [800, 112, 100]
+  train_val_test_split: [800, 110, 100]
   image_size: 128
   batch_size: 1
 
