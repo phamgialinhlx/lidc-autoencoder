@@ -1,6 +1,4 @@
 video_logger:
   _target_: src.callbacks.video_logger.VideoLogger
-  batch_frequency: 1500 
   max_videos: 4 
   clamp: True
-  increase_log_steps: True

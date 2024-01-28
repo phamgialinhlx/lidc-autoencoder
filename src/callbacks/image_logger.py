@@ -12,20 +12,16 @@ from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.utilities import rank_zero_only
 
 class ImageLogger(Callback):
-    def __init__(self, batch_frequency, max_images, clamp=True, increase_log_steps=True, local=False):
+    def __init__(self, max_images, clamp=True, local=False):
         super().__init__()
-        self.batch_freq = batch_frequency
         self.max_images = max_images
-        self.log_steps = [
-            2 ** n for n in range(int(np.log2(self.batch_freq)) + 1)]
-        if not increase_log_steps:
-            self.log_steps = [self.batch_freq]
         self.clamp = clamp
         self.local = local
+        self.batch = None
 
     @rank_zero_only
     def log_local(self, save_dir, split, images,
-                  global_step, current_epoch, batch_idx):
+                  global_step, current_epoch):
         root = os.path.join(save_dir, "images", split)
         # print(root)
         #mean = images.pop('mean_org')
@@ -43,20 +39,18 @@ class ImageLogger(Callback):
             grid = (grid).astype(np.uint8)
             grids.append(grid)
             if self.local:
-                filename = "{}_gs-{:06}_e-{:06}_b-{:06}.png".format(
+                filename = "{}_gs-{:06}_e-{:06}.png".format(
                     k,
                     global_step,
-                    current_epoch,
-                    batch_idx)
+                    current_epoch)
                 path = os.path.join(root, filename)
                 os.makedirs(os.path.split(path)[0], exist_ok=True)
                 Image.fromarray(grid).save(path)
         return grids
         
-    def log_img(self, pl_module, batch, batch_idx, split="train"):
-        if (self.check_frequency(batch_idx) and  # batch_idx % self.batch_freq == 0
-                hasattr(pl_module, "log_images") and
-                callable(pl_module.log_images) and
+    def log_img(self, pl_module, split="train"):
+        if (hasattr(pl_module, "log_images") and
+            callable(pl_module.log_images) and
             self.max_images > 0):
             logger = type(pl_module.logger)
 
@@ -65,7 +59,7 @@ class ImageLogger(Callback):
                 pl_module.eval()
 
             with torch.no_grad():
-                images = pl_module.log_images(batch, split=split)
+                images = pl_module.log_images(self.batch, split=split)
 
             for k in images:
                 N = min(images[k].shape[0], self.max_images)
@@ -74,33 +68,30 @@ class ImageLogger(Callback):
                     images[k] = images[k].detach().cpu()
 
             grids = self.log_local(pl_module.logger.save_dir, split, images,
-                           pl_module.global_step, pl_module.current_epoch, batch_idx)
-            
+                           pl_module.global_step, pl_module.current_epoch)
+
+            caption = [split + "_" + c for c in ["inputs", "reconstruct"]]
             pl_module.logger.experiment.log(
                 {
                     "image": [
                         wandb.Image(grids[0]),
                         wandb.Image(grids[1]),
                     ],
-                    "caption": ["inputs", "reconstruct"],
+                    "caption": caption,
                 }
             )
             if is_train:
                 pl_module.train()
 
-    def check_frequency(self, batch_idx):
-        if (batch_idx % self.batch_freq) == 0 or (batch_idx in self.log_steps):
-            try:
-                self.log_steps.pop(0)
-            except IndexError:
-                pass
-            return True
-        return False
-
     def on_train_batch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", outputs, batch: Any, batch_idx: int
     ) -> None:
-        self.log_img(pl_module, batch, batch_idx, split="train")
+        if self.batch is None:
+            self.batch = batch
+        else:
+            # 70% get the new batch
+            if np.random.rand() > 0.7:
+                self.batch = batch
     
     def on_validation_batch_end(
         self,
@@ -111,5 +102,16 @@ class ImageLogger(Callback):
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        # print("validation epoch end")
-        self.log_img(pl_module, batch, batch_idx, split="val")
+        if self.batch is None:
+            self.batch = batch
+        else:
+            # 70% get the new batch
+            if np.random.rand() > 0.7:
+                self.batch = batch
+
+    def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        self.log_img(pl_module, split="val")
+
+    def on_validation_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        self.log_img(pl_module, split="val")
+    

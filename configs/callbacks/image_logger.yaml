@@ -1,7 +1,5 @@
 image_logger:
   _target_: src.callbacks.image_logger.ImageLogger
-  batch_frequency: 750 
   max_images: 4 
   clamp: True
-  increase_log_steps: True
   local: False

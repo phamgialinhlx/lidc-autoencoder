@@ -37,20 +37,16 @@ def video_grid(video, fname, nrow=None, fps=6, save_local=False):
     return fname
 
 class VideoLogger(Callback):
-    def __init__(self, batch_frequency, max_videos, clamp=True, increase_log_steps=True, local=False):
+    def __init__(self, max_videos, clamp=True, local=False):
         super().__init__()
-        self.batch_freq = batch_frequency
         self.max_videos = max_videos
-        self.log_steps = [
-            2 ** n for n in range(int(np.log2(self.batch_freq)) + 1)]
-        if not increase_log_steps:
-            self.log_steps = [self.batch_freq]
         self.clamp = clamp
         self.local = local
+        self.batch = None
 
     @rank_zero_only
     def log_local(self, save_dir, split, videos,
-                  global_step, current_epoch, batch_idx):
+                  global_step, current_epoch):
         root = os.path.join(save_dir, "videos", split)
         # print(root)
         #mean = videos.pop('mean_org')
@@ -63,23 +59,21 @@ class VideoLogger(Callback):
             torch.clamp(videos[k], 0, 255)
             videos[k] = videos[k] / 255.0
             grid = videos[k]
-            filename = "{}_gs-{:06}_e-{:06}_b-{:06}.mp4".format(
+            filename = "{}_gs-{:06}_e-{:06}.mp4".format(
                 k,
                 global_step,
                 current_epoch,
-                batch_idx)
+                )
             path = os.path.join(root, filename)
             os.makedirs(os.path.split(path)[0], exist_ok=True)
             fname = video_grid(grid, path, save_local=True)
             grids.append(fname)
         return grids
-    def log_vid(self, pl_module, batch, batch_idx, split="train"):
-        # print(batch_idx, self.batch_freq, self.check_frequency(batch_idx) and hasattr(pl_module, "log_videos") and callable(pl_module.log_videos) and self.max_videos > 0)
-        if (self.check_frequency(batch_idx) and  # batch_idx % self.batch_freq == 0
-                hasattr(pl_module, "log_videos") and
-                callable(pl_module.log_videos) and
-                self.max_videos > 0):
-            # print(batch_idx, self.batch_freq,  self.check_frequency(batch_idx))
+
+    def log_vid(self, pl_module, split="train"):
+        if (hasattr(pl_module, "log_videos") and
+            callable(pl_module.log_videos) and
+            self.max_videos > 0):
             logger = type(pl_module.logger)
 
             is_train = pl_module.training
@@ -88,7 +82,7 @@ class VideoLogger(Callback):
 
             with torch.no_grad():
                 videos = pl_module.log_videos(
-                    batch, split=split, batch_idx=batch_idx)
+                    self.batch, split=split)
 
             for k in videos:
                 N = min(videos[k].shape[0], self.max_videos)
@@ -97,16 +91,18 @@ class VideoLogger(Callback):
                     videos[k] = videos[k].detach().cpu()
 
             fnames = self.log_local(pl_module.logger.save_dir, split, videos,
-                           pl_module.global_step, pl_module.current_epoch, batch_idx)
+                           pl_module.global_step, pl_module.current_epoch)
             if is_train:
                 pl_module.train()
+            
+            caption = [split + "_" + c for c in ["inputs", "reconstruct"]]
             pl_module.logger.experiment.log(
                 {
                     "video": [
                         wandb.Video(fnames[0]),
                         wandb.Video(fnames[1]),
                     ],
-                    "caption": ["inputs", "reconstruct"],
+                    "caption": caption,
                 }
             )
             if not self.local:
@@ -116,19 +112,15 @@ class VideoLogger(Callback):
             if is_train:
                 pl_module.train()
 
-    def check_frequency(self, batch_idx):
-        if (batch_idx % self.batch_freq) == 0 or (batch_idx in self.log_steps):
-            try:
-                self.log_steps.pop(0)
-            except IndexError:
-                pass
-            return True
-        return False
-    
     def on_train_batch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", outputs, batch: Any, batch_idx: int
     ) -> None:
-        self.log_vid(pl_module, batch, batch_idx, split="train")
+        if self.batch is None:
+            self.batch = batch
+        else:
+            # 70% get the new batch
+            if np.random.rand() > 0.7:
+                self.batch = batch
 
     def on_validation_batch_end(
         self,
@@ -139,4 +131,16 @@ class VideoLogger(Callback):
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        self.log_vid(pl_module, batch, batch_idx, split="val")
+        if self.batch is None:
+            self.batch = batch
+        else:
+            # 70% get the new batch
+            if np.random.rand() > 0.7:
+                self.batch = batch
+
+    def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        self.log_vid(pl_module, split="val")
+
+    def on_validation_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        self.log_vid(pl_module, split="train")
+    
