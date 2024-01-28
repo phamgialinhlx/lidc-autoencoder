@@ -1,6 +1,35 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=ddpm_dev
+
 defaults:
   - override /data: lidc
-  - override /model: vq_gan_3d
-  - override /callbacks: autoencoder
+  - override /model: ddpm
+  - override /callbacks: diffusion
   - override /trainer: default
   - override /logger: wandb
+
+tags: ["ddpm", "diffusion", "lidc"]
+task_name: "train diffusion"
+
+data:
+  train_val_test_split: [9, 1, 1]
+  image_size: 64
+  batch_size: 1
+
+model:
+  net:
+    _target_: src.models.components.diffusion.unet.Unet3D
+    dim: 32
+    dim_mults: [1, 2, 4]
+    channels: 8
+  autoencoder_ckpt_path: "/mnt/work/Code/lung-thesis/outputs/vq_gan_3d_dev/lung-thesis/367ppx93/checkpoints/epoch=4-step=90.ckpt"
+
+
+logger: 
+  wandb:
+    name: "ddpm_dev"
+
+trainer:
+  max_epochs: 5
