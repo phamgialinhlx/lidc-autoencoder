@@ -171,6 +171,6 @@ wandb==0.12.21
 wcwidth==0.2.13
 werkzeug==2.1.2
 wheel==0.41.2
-wrapt==1.14.1
+wrapt==1.16.0
 yarl==1.7.2
 zipp==3.8.0
