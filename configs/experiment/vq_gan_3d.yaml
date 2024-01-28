@@ -36,6 +36,10 @@ callbacks:
       size_average: True
       channel: 1
       win_size: 3
+  image_logger:
+    batch_frequency: 10000
+  video_logger:
+    batch_frequency: 20000
 
 trainer:
   max_epochs: 200
