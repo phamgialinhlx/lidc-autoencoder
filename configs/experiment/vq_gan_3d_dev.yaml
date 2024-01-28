@@ -21,6 +21,7 @@ data:
 
 model:
   embedding_dim: 8
+  n_codes: 2048
   n_hiddens: 16
   downsample: [2, 2, 2]
   perceptual_weight: 4 
