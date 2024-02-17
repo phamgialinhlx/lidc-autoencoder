@@ -38,4 +38,4 @@ callbacks:
       win_size: 3
 
 trainer:
-  max_epochs: 200
+  max_epochs: 1000

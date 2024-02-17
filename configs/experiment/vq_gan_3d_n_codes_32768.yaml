@@ -15,18 +15,16 @@ tags: ["autoencoder", "vqgan_3d", "lidc"]
 task_name: "train autoencoder"
 
 model:
-  downsample: [4, 4, 4]
-  disc_layers: 1
+  n_codes: 32768
 
 data:
   train_val_test_split: [800, 110, 100]
-  augmentation: False
   image_size: 128
   batch_size: 1
 
 logger: 
   wandb:
-    name: "vq_gan_3d_low_compression"
+    name: "vq_gan_3d_n_codes_32768"
 
 callbacks:
   metrics_logger:
@@ -41,12 +39,6 @@ callbacks:
       size_average: True
       channel: 1
       win_size: 3
-      
-  model_checkpoint:
-    monitor: "val/msssim"
-    mode: "max"
-    save_last: True
-    
+
 trainer:
-  max_epochs: 1000
-  precision: 16-mixed
+  max_epochs: 200

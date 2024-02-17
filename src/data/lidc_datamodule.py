@@ -19,6 +19,7 @@ class LIDCDataModule(LightningDataModule):
         batch_size: int = 1,
         image_size: int = 128,
         train_val_test_split: Tuple[int, int, int] = (9, 1, 1),
+        augmentation: bool = True,
         num_workers: int = 0,
         pin_memory: bool = False,
     ) -> None:
@@ -75,7 +76,7 @@ class LIDCDataModule(LightningDataModule):
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            dataset = LIDCDataset(root_dir=self.hparams.data_dir, transforms=self.transforms)
+            dataset = LIDCDataset(root_dir=self.hparams.data_dir, transforms=self.transforms, augmentation=self.hparams.augmentation)
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=dataset,
                 lengths=self.hparams.train_val_test_split,
