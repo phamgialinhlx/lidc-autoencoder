@@ -8,9 +8,9 @@ import torch.nn.functional as F
 from omegaconf import DictConfig
 
 import rootutils
-from src.utils.ema import LitEma
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
+from src.utils.ema import LitEma
 from src.models.components.vqgan import Encoder, Decoder, SamePadConv3d, Codebook, LPIPS, NLayerDiscriminator, NLayerDiscriminator3D
 from src.models.components.vqgan.utils import shift_dim, adopt_weight, comp_getattr
 
@@ -387,6 +387,7 @@ def main(cfg: DictConfig):
     print(cfg)
     # cfg.embedding_dim = 16
     cfg.n_hiddens = 16
+    from IPython import embed; embed()
     model: VQGAN = hydra.utils.instantiate(cfg).to('cuda')
     input_tensor = torch.randn(1, 1, 128, 128, 128).to('cuda')
     encoded_output = model.encoder(input_tensor)
