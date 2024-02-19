@@ -17,7 +17,9 @@ from einops import rearrange
 def video_grid(video, fname, nrow=None, fps=6, save_local=False):
     b, c, t, h, w = video.shape
     video = video.permute(0, 2, 3, 4, 1)
+    video = video.clamp(0, 1)
     video = (video.cpu().numpy() * 255).astype('uint8')
+    
     if nrow is None:
         nrow = math.ceil(math.sqrt(b))
     ncol = math.ceil(b / nrow)

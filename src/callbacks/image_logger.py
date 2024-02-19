@@ -31,7 +31,8 @@ class ImageLogger(Callback):
         grids = []
         for k in images:
             images[k] = (images[k] + 1.0) * 127.5  # std + mean
-            torch.clamp(images[k], 0, 255)
+            images[k] = images[k].clamp(0, 255)
+            # images[k] = images[k].to(torch.uint8)
             grid = torchvision.utils.make_grid(images[k], nrow=4)
             grid = grid
             grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1)

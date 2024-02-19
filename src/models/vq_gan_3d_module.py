@@ -168,8 +168,7 @@ class VQGAN(LightningModule):
 
         # Selects one random 2D image from each 3D Image
         frame_idx = torch.randint(0, T, [B]).cuda()
-        frame_idx_selected = frame_idx.reshape(-1,
-                                               1, 1, 1, 1).repeat(1, C, 1, H, W)
+        frame_idx_selected = frame_idx.reshape(-1, 1, 1, 1, 1).repeat(1, C, 1, H, W)
         frames = torch.gather(x, 2, frame_idx_selected).squeeze(2)
         frames_recon = torch.gather(x_recon, 2, frame_idx_selected).squeeze(2)
 
@@ -252,8 +251,8 @@ class VQGAN(LightningModule):
             disc_factor = adopt_weight(
                 self.global_step, threshold=self.discriminator_iter_start)
             discloss = disc_factor * \
-                (self.image_gan_weight*d_image_loss +
-                 self.video_gan_weight*d_video_loss)
+                (self.image_gan_weight * d_image_loss +
+                 self.video_gan_weight * d_video_loss)
 
             self.log("train/logits_image_real", logits_image_real.mean().detach(),
                      logger=True, on_step=True, on_epoch=True)
