@@ -14,6 +14,8 @@ from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.utilities import rank_zero_only
 from einops import rearrange
 
+from src.models.diffusion_module import DiffusionModule
+
 def video_grid(video, fname, nrow=None, fps=6, save_local=False):
     b, c, t, h, w = video.shape
     video = video.permute(0, 2, 3, 4, 1)
@@ -97,16 +99,26 @@ class VideoLogger(Callback):
             if is_train:
                 pl_module.train()
             
-            caption = [split + "_" + c for c in ["inputs", "reconstruct"]]
-            pl_module.logger.experiment.log(
-                {
-                    "video": [
-                        wandb.Video(fnames[0]),
-                        wandb.Video(fnames[1]),
-                    ],
-                    "caption": caption,
-                }
-            )
+            if isinstance(pl_module, DiffusionModule):
+                pl_module.logger.experiment.log(
+                    {
+                        "video": [
+                            wandb.Video(fnames[0]),
+                        ],
+                        "caption": [split + "_" + c for c in ["generate"]],
+                    }
+                )
+            else:
+                caption = [split + "_" + c for c in ["inputs", "reconstruct"]]
+                pl_module.logger.experiment.log(
+                    {
+                        "video": [
+                            wandb.Video(fnames[0]),
+                            wandb.Video(fnames[1]),
+                        ],
+                        "caption": caption,
+                    }
+                )
             if not self.local:
                 for fname in fnames:
                     os.remove(fname)

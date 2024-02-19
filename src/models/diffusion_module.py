@@ -112,6 +112,7 @@ class DiffusionModule(LightningModule):
             
     def model_step(self, batch: Any):
         # images, labels = batch
+        # from IPython import embed; embed()
         images = batch['data']
         latent = self.autoencoder_encode(images)
         return self.loss(latent)
@@ -155,17 +156,20 @@ class DiffusionModule(LightningModule):
         return {"optimizer": optimizer}
 
     @torch.no_grad()
-    def log_image(
+    def log_videos(
         self,
         xt,
         noise: torch.Tensor = None,
         repeat_noise: bool = False,
         cond: Tensor = None,
-        device: torch.device = torch.device('cpu'),
-        prog_bar: bool = True,
+        device: torch.device = torch.device('cuda'),
+        prog_bar: bool = True, 
+        **kwargs
     ) -> Tensor:
+        xt = xt['data']
         xt = self.autoencoder_encode(xt)
         xt = torch.randn(xt.shape).to(device)
+
         sample_steps = (
             tqdm(self.sampler.timesteps, desc="Sampling t")
             if prog_bar
@@ -178,17 +182,17 @@ class DiffusionModule(LightningModule):
                 for i, t in enumerate(sample_steps):
                     
                     t = torch.full((xt.shape[0],), t, device=device, dtype=torch.int64)
-                    model_output = self.net(x=xt, timesteps=t, cond=cond)
+                    model_output = self.net(x=xt, time=t, cond=cond)
                     xt = self.sampler.reverse_step(
                         model_output, t, xt, noise, repeat_noise
                     )
         else:
             for i, t in enumerate(sample_steps):
                 t = torch.full((xt.shape[0],), t, device=device, dtype=torch.int64)
-                model_output = self.net(x=xt, timesteps=t, cond=cond)
+                model_output = self.net(x=xt, time=t, cond=cond)
                 xt = self.sampler.reverse_step(
                     model_output, t, xt, noise, repeat_noise
                 )
         out_images = self.autoencoder_decode(xt)
-        return out_images
+        return {"generate": out_images}
     

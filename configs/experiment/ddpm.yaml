@@ -11,7 +11,7 @@ defaults:
   - override /logger: wandb
 
 tags: ["ddpm", "diffusion", "lidc"]
-task_name: "train diffusion"
+task_name: "train_diffusion"
 
 data:
   train_val_test_split: [800, 110, 100]
@@ -24,7 +24,7 @@ model:
   #   dim: 32
   #   dim_mults: [1, 2, 4]
   #   channels: 8
-  autoencoder_ckpt_path: "/mnt/work/Code/lung-thesis/outputs/vq_gan_3d_dev/lung-thesis/367ppx93/checkpoints/epoch=4-step=90.ckpt"
+  autoencoder_ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/2024-02-17_12-59-04/lung-thesis/2aglgm52/checkpoints/epoch=111-step=179200.ckpt"
 
 logger: 
   wandb:
@@ -32,9 +32,9 @@ logger:
 
 callbacks:
   model_checkpoint:
-    monitor: "val/msssim"
-    mode: "max"
+    monitor: "val/loss"
+    mode: "min"
     save_last: True
 
 trainer:
-  max_epochs: 200
+  max_epochs: 1000
