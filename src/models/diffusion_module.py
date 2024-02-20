@@ -20,6 +20,9 @@ from src.models.components.diffusion.sampler.ddpm import DDPMSampler
 def load_autoencoder(ckpt_path):
     try:
         ae = VQGAN.load_from_checkpoint(ckpt_path).eval()
+        if ae.use_ema:
+            ae.model_ema.store(ae.parameters())
+            ae.model_ema.copy_to(ae)
     except Exception as e:
         print(f"Failed to load autoencoder from {ckpt_path}: {e}")
 
@@ -94,6 +97,7 @@ class DiffusionModule(LightningModule):
                 return x
             else:
                 return self.autoencoder.encode(x).sample()
+            
     @torch.no_grad()
     def autoencoder_decode(self, xt):
         if self.autoencoder is None:
@@ -112,7 +116,6 @@ class DiffusionModule(LightningModule):
             
     def model_step(self, batch: Any):
         # images, labels = batch
-        # from IPython import embed; embed()
         images = batch['data']
         latent = self.autoencoder_encode(images)
         return self.loss(latent)
