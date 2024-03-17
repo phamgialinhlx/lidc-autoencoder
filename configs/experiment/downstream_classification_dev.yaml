@@ -15,8 +15,8 @@ tags: ["classification", "lidc"]
 task_name: "train_classification_dev"
 
 data:
-  train_val_test_split: [800, 110, 100]
-  augmentation: False
+  data_dir: "/mnt/work/Code/LIDC-IDRI-Preprocessing/data/"
+  train_val_test_split: [10, 1, 1]
   image_size: 128
   batch_size: 1
 

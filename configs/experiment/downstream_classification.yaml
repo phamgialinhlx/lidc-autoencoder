@@ -12,11 +12,11 @@ defaults:
   - override /logger: wandb
 
 tags: ["classification", "lidc"]
-task_name: "train_classification_dev"
+task_name: "train_classification"
 
 data:
-  data_dir: "/mnt/work/Code/LIDC-IDRI-Preprocessing/data/"
-  train_val_test_split: [10, 1, 1]
+  train_val_test_split: [800, 110, 100]
+  augmentation: False
   image_size: 128
   batch_size: 1
 
