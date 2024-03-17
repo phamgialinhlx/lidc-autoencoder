@@ -35,6 +35,7 @@ callbacks:
     monitor: "val/loss"
     mode: "min"
     save_last: True
-
+    save_on_train_epoch_end: True
+    
 trainer:
   max_epochs: 1000
