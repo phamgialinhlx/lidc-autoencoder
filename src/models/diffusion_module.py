@@ -17,12 +17,14 @@ from src.models.vq_gan_3d_module import VQGAN
 from src.models.components.diffusion.sampler import BaseSampler
 from src.models.components.diffusion.sampler.ddpm import DDPMSampler
 
-def load_autoencoder(ckpt_path):
+def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False):
     try:
-        ae = VQGAN.load_from_checkpoint(ckpt_path).eval()
+        ae = VQGAN.load_from_checkpoint(ckpt_path, map_location=map_location).eval()
         if ae.use_ema:
             ae.model_ema.store(ae.parameters())
             ae.model_ema.copy_to(ae)
+        if disable_decoder:
+            ae.decoder = None
     except Exception as e:
         print(f"Failed to load autoencoder from {ckpt_path}: {e}")
 

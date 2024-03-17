@@ -28,6 +28,10 @@ class LIDCDataset(Dataset):
 
     def __getitem__(self, index):
         image_file, mask_file = self.paths[index]
+        if image_file.__contains__('Clean'):
+            label = 0
+        else:
+            label = 1
         img = np.load(image_file)
         mask = np.load(mask_file)
 
@@ -47,10 +51,12 @@ class LIDCDataset(Dataset):
             # Apply additional transformations if provided
             imageout = self.transforms(imageout)
 
-        return {'data': imageout}
+        return {'data': imageout, 'mask': mask, 'label': label}
 
 if __name__ == "__main__":
     ds = LIDCDataset(root_dir='/mnt/work/Code/LIDC-IDRI-Preprocessing/data/')
     print('Number of samples in dataset:', ds.__len__() )
     print(ds[0]['data'].shape)
+    print(ds[0]['mask'].shape)
+    print(ds[0]['label'])
     
