@@ -35,6 +35,5 @@ callbacks:
     
 trainer:
   max_epochs: 1000
-  accelerator: cpu
 
   # precision: 16-mixed
