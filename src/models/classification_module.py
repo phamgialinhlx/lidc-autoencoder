@@ -27,32 +27,32 @@ class ClassificationModule(LightningModule):
         super().__init__(*args, **kwargs)
         self.save_hyperparameters(logger=False)
         
-        self.autoencoder = load_autoencoder(autoencoder_ckpt_path, disable_decoder=True)
+        self.autoencoder = load_autoencoder(autoencoder_ckpt_path, disable_decoder=True, eval=False)
         self.net = net        
         
         # loss function
         self.criterion = torch.nn.CrossEntropyLoss()
         
         # metric objects for calculating and averaging accuracy across batches
-        self.train_acc = Accuracy(task="multiclass", num_classes=num_classes)
-        self.val_acc = Accuracy(task="multiclass", num_classes=num_classes)
-        self.test_acc = Accuracy(task="multiclass", num_classes=num_classes)
+        self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="micro")
+        self.val_acc = Accuracy(task="multiclass", num_classes=num_classes, average="micro")
+        self.test_acc = Accuracy(task="multiclass", num_classes=num_classes, average="micro")
 
-        self.train_f1 = F1Score(num_classes=num_classes)
-        self.train_precision = Precision(num_classes=num_classes)
-        self.train_recall = Recall(num_classes=num_classes)
+        self.train_f1 = F1Score(num_classes=num_classes, average="micro")
+        self.train_precision = Precision(num_classes=num_classes, average="micro")
+        self.train_recall = Recall(num_classes=num_classes, average="micro")
         self.train_kappa = CohenKappa(num_classes=num_classes)
         # self.train_auc = AUC(num_classes=num_classes)
 
-        self.val_f1 = F1Score(num_classes=num_classes)
-        self.val_precision = Precision(num_classes=num_classes)
-        self.val_recall = Recall(num_classes=num_classes)
+        self.val_f1 = F1Score(num_classes=num_classes, average="micro")
+        self.val_precision = Precision(num_classes=num_classes, average="micro")
+        self.val_recall = Recall(num_classes=num_classes, average="micro")
         self.val_kappa = CohenKappa(num_classes=num_classes)
         # self.val_auc = AUC(num_classes=num_classes)
 
-        self.test_f1 = F1Score(num_classes=num_classes)
-        self.test_precision = Precision(num_classes=num_classes)
-        self.test_recall = Recall(num_classes=num_classes)
+        self.test_f1 = F1Score(num_classes=num_classes, average="micro")
+        self.test_precision = Precision(num_classes=num_classes, average="micro")
+        self.test_recall = Recall(num_classes=num_classes, average="micro")
         self.test_kappa = CohenKappa(num_classes=num_classes)
         # self.test_auc = AUC(num_classes=num_classes)
 
@@ -117,7 +117,6 @@ class ClassificationModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         loss, preds, targets = self.model_step(batch)
-
         # update and log metrics
         self.val_loss(loss)
         self.val_acc(preds, targets)

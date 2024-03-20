@@ -17,9 +17,9 @@ from src.models.vq_gan_3d_module import VQGAN
 from src.models.components.diffusion.sampler import BaseSampler
 from src.models.components.diffusion.sampler.ddpm import DDPMSampler
 
-def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False):
+def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False, eval=True):
     try:
-        ae = VQGAN.load_from_checkpoint(ckpt_path, map_location=map_location).eval()
+        ae = VQGAN.load_from_checkpoint(ckpt_path, map_location=map_location)
         if ae.use_ema:
             ae.model_ema.store(ae.parameters())
             ae.model_ema.copy_to(ae)
@@ -27,8 +27,9 @@ def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False):
             ae.decoder = None
     except Exception as e:
         print(f"Failed to load autoencoder from {ckpt_path}: {e}")
-
-    ae.freeze()
+    if eval:
+        ae.eval()
+        ae.freeze()
     return ae
 
 class DiffusionModule(LightningModule):

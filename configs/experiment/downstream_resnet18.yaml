@@ -25,7 +25,7 @@ model:
 
 logger: 
   wandb:
-    name: "downstream_classification_dev"
+    name: "downstream_resnet18"
 
 callbacks:
   model_checkpoint:
