@@ -45,8 +45,9 @@ class UNet3D(nn.Module):
         self.up3 = Up(self.channels[2], self.channels[1] // factor, trilinear)
         self.up4 = Up(self.channels[1], self.channels[0], trilinear)
         self.outc = OutConv(self.channels[0], n_classes)
-        self.conv_last = DoubleConv(n_classes, n_classes, conv_type=self.convtype)
-
+        # self.conv_last = DoubleConv(n_classes, n_classes, conv_type=self.convtype)
+        self.softmax = nn.Softmax(dim=1)
+        
     def forward(self, x):
         x1 = self.inc(x)
         x2 = self.down1(x1)
@@ -58,7 +59,8 @@ class UNet3D(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return self.conv_last(logits)
+        
+        return self.softmax(logits)
 
 
 class DoubleConv(nn.Module):
@@ -162,3 +164,5 @@ if __name__ == "__main__":
 
     # Print the shape of the output
     print("Output shape:", output.shape)
+    print("Ouput max", output.max())
+    print("Ouput min", output.min())
