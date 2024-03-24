@@ -39,7 +39,7 @@ class UNet(nn.Module):
         # self.inc = DoubleConv(n_channels, self.channels[0], conv_type=self.convtype)
         # self.down1 = Down(self.channels[0], self.channels[1], conv_type=self.convtype)
         # self.down2 = Down(self.channels[1], self.channels[2], conv_type=self.convtype)
-        self.autoencoder_model = load_autoencoder(autoencoder_path, map_location="cpu", disable_decoder=True, eval=False).encoder
+        self.autoencoder_model = load_autoencoder(autoencoder_path, disable_decoder=True, eval=False).encoder
         self.down3 = Down(self.channels[2], self.channels[3], conv_type=self.convtype)
         factor = 2 if trilinear else 1
         self.down4 = Down(self.channels[3], self.channels[4] // factor, conv_type=self.convtype)

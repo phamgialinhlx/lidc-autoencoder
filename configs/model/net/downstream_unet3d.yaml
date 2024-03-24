@@ -1,0 +1,7 @@
+_target_: src.models.components.segmentation.unet3d.UNet
+autoencoder_path: ""
+n_channels: 1
+n_classes: 1
+width_multiplier: 1
+trilinear: True
+use_ds_conv: False

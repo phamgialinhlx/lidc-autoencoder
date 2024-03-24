@@ -1,6 +1,7 @@
 from .vq_gan_3d_module import VQGAN
 from .diffusion_module import DiffusionModule
 from .classification_module import ClassificationModule
+# from .segmentation_module import SegmentationModule
 
 def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False, eval=True):
     try:
