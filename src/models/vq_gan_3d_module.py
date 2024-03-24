@@ -123,7 +123,7 @@ class VQGAN(LightningModule):
         if self.use_ema:
             self.model_ema = LitEma(self)
             print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
-    
+
     @contextmanager
     def ema_scope(self, context=None):
         if self.use_ema:

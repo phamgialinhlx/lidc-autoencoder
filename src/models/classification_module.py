@@ -1,4 +1,5 @@
 from typing import Any, Dict, Tuple
+from contextlib import contextmanager
 
 import hydra
 import torch
@@ -10,6 +11,7 @@ from torchmetrics.classification import Accuracy, F1Score, Precision, Recall, RO
 import rootutils
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
+from src.utils.ema import LitEma
 from src.models.vq_gan_3d_module import VQGAN
 from src.models.diffusion_module import load_autoencoder
 
@@ -21,6 +23,7 @@ class ClassificationModule(LightningModule):
                 scheduler: torch.optim.lr_scheduler, 
                 compile: bool, 
                 num_classes: int = 2,
+                use_ema: bool = True,
                 *args: Any, 
                 **kwargs: Any
         ) -> None:
@@ -63,6 +66,25 @@ class ClassificationModule(LightningModule):
 
         # for tracking best so far validation accuracy
         self.val_acc_best = MaxMetric()
+        self.use_ema = use_ema
+        if self.use_ema:
+            self.model_ema = LitEma(self)
+            print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
+
+    @contextmanager
+    def ema_scope(self, context=None):
+        if self.use_ema:
+            self.model_ema.store(self.parameters())
+            self.model_ema.copy_to(self)
+            if context is not None:
+                print(f"{context}: Switched to EMA weights")
+        try:
+            yield None
+        finally:
+            if self.use_ema:
+                self.model_ema.restore(self.parameters())
+                if context is not None:
+                    print(f"{context}: Restored training weights")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if isinstance(self.autoencoder, VQGAN):
@@ -116,7 +138,12 @@ class ClassificationModule(LightningModule):
             labels.
         :param batch_idx: The index of the current batch.
         """
-        loss, preds, targets = self.model_step(batch)
+        if self.use_ema:
+            with self.ema_scope():
+                loss, preds, targets = self.model_step(batch)
+        else:
+            loss, preds, targets = self.model_step(batch)
+        
         # update and log metrics
         self.val_loss(loss)
         self.val_acc(preds, targets)
@@ -150,7 +177,12 @@ class ClassificationModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         loss, preds, targets = self.model_step(batch)
-
+        if self.use_ema:
+            with self.ema_scope():
+                loss, preds, targets = self.model_step(batch)
+        else:
+            loss, preds, targets = self.model_step(batch)
+        
         # update and log metrics
         self.test_loss(loss)
         self.test_acc(preds, targets)
