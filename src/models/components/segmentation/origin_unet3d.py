@@ -6,15 +6,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.models import load_autoencoder
-
-class UNet(nn.Module):
+class UNet3D(nn.Module):
     def __init__(self,
             n_channels,
             n_classes, 
             width_multiplier=1, \
             trilinear=True, \
-            use_ds_conv=False
+            use_ds_conv=False,
+            *args, **kwargs
         ):
         """A simple 3D Unet, adapted from a 2D Unet from https://github.com/milesial/Pytorch-UNet/tree/master/unet
         Arguments:
@@ -27,8 +26,8 @@ class UNet(nn.Module):
           use_ds_conv = if True, we use depthwise-separable convolutional layers. in my experience, this is of little help. This
                   appears to be because with 3D data, the vast vast majority of GPU RAM is the input data/labels, not the params, so little
                   VRAM is saved by using ds_conv, and yet performance suffers."""
-        super(UNet, self).__init__()
-        _channels = (16, 32, 64, 128, 256, 512)
+        super(UNet3D, self).__init__()
+        _channels = (32, 64, 128, 256, 512)
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.channels = [int(c*width_multiplier) for c in _channels]
@@ -149,7 +148,7 @@ if __name__ == "__main__":
     # Instantiate UNet model
     n_channels = 1  # Assuming grayscale input
     n_classes = 1   # Number of output classes
-    unet_model = UNet(
+    unet_model = UNet3D(
         n_channels, 
         n_classes
     )
