@@ -1,0 +1,43 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=vq_gan_3d
+
+
+defaults:
+  - override /data: lidc
+  - override /model: downstream_classification
+  - override /callbacks: "classification"
+  - override /trainer: default
+  - override /logger: wandb
+
+tags: ["classification", "lidc"]
+task_name: "train_classification"
+
+data:
+  train_val_test_split: [800, 110, 100]
+  augmentation: False
+  image_size: 128
+  batch_size: 1
+
+model:
+  autoencoder_ckpt_path: "./outputs/vq_gan_3d_low_compression/lung-thesis/2aglgm52/checkpoints/epoch=111-step=179200.ckpt"
+  net: 
+    _target_: src.models.components.classification.ResNet3D
+    in_features: 262144
+    num_classes: 2
+
+logger: 
+  wandb:
+    name: "downstream_linear_head"
+
+callbacks:
+  model_checkpoint:
+    monitor: "val/f1"
+    mode: "max"
+    save_last: True
+    
+trainer:
+  max_epochs: 1000
+
+  # precision: 16-mixed
