@@ -28,12 +28,9 @@ class LIDCDataset(Dataset):
 
     def __getitem__(self, index):
         image_file, mask_file = self.paths[index]
-        if image_file.__contains__('Clean'):
-            label = 0
-        else:
-            label = 1
         img = np.load(image_file)
         mask = np.load(mask_file)
+        label = 1 if mask.sum() > 0 else 0
 
         # range normalization to [-1, 1]
         img = (img - img.min()) / (img.max() - img.min())
@@ -46,7 +43,9 @@ class LIDCDataset(Dataset):
         
         imageout = torch.from_numpy(img.copy()).float()
         imageout = imageout.unsqueeze(0)
-        
+        mask = torch.from_numpy(mask.copy()).int()
+        mask = mask.unsqueeze(0)
+
         if self.transforms is not None:
             # Apply additional transformations if provided
             imageout = self.transforms(imageout)
@@ -56,7 +55,12 @@ class LIDCDataset(Dataset):
 if __name__ == "__main__":
     ds = LIDCDataset(root_dir='/mnt/work/Code/LIDC-IDRI-Preprocessing/data/')
     print('Number of samples in dataset:', ds.__len__() )
-    print(ds[0]['data'].shape)
-    print(ds[0]['mask'].shape)
-    print(ds[0]['label'])
-    
+    i = 0
+    # for i in range(12):
+    print(ds[i]['data'].shape)
+    print(ds[i]['mask'].shape)
+    print("Mask Max", ds[i]['mask'].max())
+    print("Mask Min", ds[i]['mask'].min())
+    print("Mask Sum", ds[i]['mask'].sum())
+    print(ds[i]['label'])
+    # print(ds[0]['da

@@ -18,7 +18,7 @@ class LIDCDataModule(LightningDataModule):
         data_dir: str = 'data/lidc',
         batch_size: int = 1,
         image_size: int = 128,
-        train_val_test_split: Tuple[int, int, int] = (9, 1, 1),
+        train_val_test_split: Tuple[int, int, int] = (10, 1, 1),
         augmentation: bool = True,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -151,7 +151,9 @@ class LIDCDataModule(LightningDataModule):
 )
 def main(cfg: DictConfig):
     print(cfg)
-    cfg.image_size = 64
+    cfg.image_size = 128
+    cfg.train_val_test_split = (10, 1, 1)
+    cfg.data_dir = "/mnt/work/Code/LIDC-IDRI-Preprocessing/data/"
     datamodule: LIDCDataModule = hydra.utils.instantiate(cfg)
     datamodule.setup()
     print('Number of samples in train set:', len(datamodule.train_dataloader()))
@@ -159,6 +161,8 @@ def main(cfg: DictConfig):
     print('Number of samples in test set:', len(datamodule.test_dataloader()))
     print('Shape of a sample:', datamodule.train_dataloader().dataset[0]['data'].shape)
     print('Data range: ', datamodule.train_dataloader().dataset[0]['data'].min(), datamodule.train_dataloader().dataset[0]['data'].max())
-
+    print('Label:', datamodule.train_dataloader().dataset[0]['label'])
+    print('Mask shape:', datamodule.train_dataloader().dataset[0]['mask'].shape)
+    print('Mask range: ', datamodule.train_dataloader().dataset[0]['mask'].min(), datamodule.train_dataloader().dataset[0]['mask'].max())
 if __name__ == "__main__":
     main()
