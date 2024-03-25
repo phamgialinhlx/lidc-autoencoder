@@ -152,8 +152,8 @@ class LIDCDataModule(LightningDataModule):
 def main(cfg: DictConfig):
     print(cfg)
     cfg.image_size = 128
-    cfg.train_val_test_split = (10, 1, 1)
-    cfg.data_dir = "/mnt/work/Code/LIDC-IDRI-Preprocessing/data/"
+    cfg.train_val_test_split = (800, 110, 100)
+    # cfg.data_dir = "/mnt/work/Code/LIDC-IDRI-Preprocessing/data/"
     datamodule: LIDCDataModule = hydra.utils.instantiate(cfg)
     datamodule.setup()
     print('Number of samples in train set:', len(datamodule.train_dataloader()))
@@ -164,5 +164,22 @@ def main(cfg: DictConfig):
     print('Label:', datamodule.train_dataloader().dataset[0]['label'])
     print('Mask shape:', datamodule.train_dataloader().dataset[0]['mask'].shape)
     print('Mask range: ', datamodule.train_dataloader().dataset[0]['mask'].min(), datamodule.train_dataloader().dataset[0]['mask'].max())
+
+    # iterate through train dataloader
+    cnt = 0
+    for i, batch in enumerate(datamodule.train_dataloader()):
+        cnt += batch['label']
+    print('Number of positive samples:', cnt)
+
+    cnt = 0
+    for i, batch in enumerate(datamodule.val_dataloader()):
+        cnt += batch['label']
+    print('Number of positive samples:', cnt)
+
+    cnt = 0
+    for i, batch in enumerate(datamodule.test_dataloader()):
+        cnt += batch['label']
+    print('Number of positive samples:', cnt)
+    
 if __name__ == "__main__":
     main()

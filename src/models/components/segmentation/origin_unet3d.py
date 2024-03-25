@@ -27,7 +27,7 @@ class UNet3D(nn.Module):
                   appears to be because with 3D data, the vast vast majority of GPU RAM is the input data/labels, not the params, so little
                   VRAM is saved by using ds_conv, and yet performance suffers."""
         super(UNet3D, self).__init__()
-        _channels = (32, 64, 128, 256, 512)
+        _channels = (64, 128, 256, 512, 1024)
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.channels = [int(c*width_multiplier) for c in _channels]
