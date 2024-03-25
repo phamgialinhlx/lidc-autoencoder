@@ -2,4 +2,5 @@ defaults:
   - model_checkpoint
   - model_summary
   - rich_progress_bar
+  - mask_logger
   - _self_
