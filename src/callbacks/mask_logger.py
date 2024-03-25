@@ -13,6 +13,7 @@ import lightning.pytorch as pl
 from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.utilities import rank_zero_only
 from einops import rearrange
+import torch.nn.functional as F
 
 
 class MaskLogger(Callback):
@@ -43,8 +44,11 @@ class MaskLogger(Callback):
             
             y = self.batch['mask'].int().squeeze(0)
             label = self.batch['label']
-            pred = pl_module.forward(x).squeeze(0)
-
+            pred = pl_module.forward(x)
+            pred = F.sigmoid(pred)
+            pred = pred >= 0.5
+            pred = pred.squeeze(0)
+            # pred = torch.argmax(pred, dim=1)
             x = (x + 1.0) * 127.5  # std + mean
             torch.clamp(x, 0, 255)
             
@@ -55,6 +59,7 @@ class MaskLogger(Callback):
             y = y.permute(1, 2, 3, 0)
             y = y.cpu().numpy()
             pred = pred.permute(1, 2, 3, 0)
+            pred[pred == 1] = 255
             pred = pred.cpu().detach().numpy()
 
             frames = []
