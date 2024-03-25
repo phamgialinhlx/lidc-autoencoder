@@ -6,15 +6,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.models import load_autoencoder
-
-class UNet(nn.Module):
+class UNet3D(nn.Module):
     def __init__(self,
             n_channels,
             n_classes, 
             width_multiplier=1, \
             trilinear=True, \
-            use_ds_conv=False
+            use_ds_conv=False,
+            *args, **kwargs
         ):
         """A simple 3D Unet, adapted from a 2D Unet from https://github.com/milesial/Pytorch-UNet/tree/master/unet
         Arguments:
@@ -27,8 +26,8 @@ class UNet(nn.Module):
           use_ds_conv = if True, we use depthwise-separable convolutional layers. in my experience, this is of little help. This
                   appears to be because with 3D data, the vast vast majority of GPU RAM is the input data/labels, not the params, so little
                   VRAM is saved by using ds_conv, and yet performance suffers."""
-        super(UNet, self).__init__()
-        _channels = (16, 32, 64, 128, 256, 512)
+        super(UNet3D, self).__init__()
+        _channels = (32, 64, 128, 256, 512)
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.channels = [int(c*width_multiplier) for c in _channels]
@@ -46,8 +45,9 @@ class UNet(nn.Module):
         self.up3 = Up(self.channels[2], self.channels[1] // factor, trilinear)
         self.up4 = Up(self.channels[1], self.channels[0], trilinear)
         self.outc = OutConv(self.channels[0], n_classes)
-        self.conv_last = DoubleConv(n_classes, n_classes, conv_type=self.convtype)
-
+        # self.conv_last = DoubleConv(n_classes, n_classes, conv_type=self.convtype)
+        self.softmax = nn.Softmax(dim=1)
+        
     def forward(self, x):
         x1 = self.inc(x)
         x2 = self.down1(x1)
@@ -59,7 +59,8 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return self.conv_last(logits)
+        
+        return self.softmax(logits)
 
 
 class DoubleConv(nn.Module):
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     # Instantiate UNet model
     n_channels = 1  # Assuming grayscale input
     n_classes = 1   # Number of output classes
-    unet_model = UNet(
+    unet_model = UNet3D(
         n_channels, 
         n_classes
     )
@@ -163,3 +164,5 @@ if __name__ == "__main__":
 
     # Print the shape of the output
     print("Output shape:", output.shape)
+    print("Ouput max", output.max())
+    print("Ouput min", output.min())

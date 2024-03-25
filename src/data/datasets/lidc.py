@@ -45,7 +45,6 @@ class LIDCDataset(Dataset):
         imageout = imageout.unsqueeze(0)
         mask = torch.from_numpy(mask.copy()).int()
         mask = mask.unsqueeze(0)
-
         if self.transforms is not None:
             # Apply additional transformations if provided
             imageout = self.transforms(imageout)
