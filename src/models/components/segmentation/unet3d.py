@@ -48,8 +48,6 @@ class UNet(nn.Module):
         self.up3 = Up(self.channels[2], self.channels[1] // factor, trilinear)
         self.up4 = Up(self.channels[1], self.channels[0], trilinear)
         self.outc = OutConv(self.channels[0], n_classes)
-        # self.conv_last = DoubleConv(n_classes, n_classes, conv_type=self.convtype)
-        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         x1 = self.autoencoder_model.conv_first(x)
@@ -67,7 +65,7 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return self.softmax(logits)
+        return logits
 
 
 class DoubleConv(nn.Module):

@@ -13,7 +13,7 @@ from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 # from src.models import load_autoencoder
 from src.models.components.loss_function.lossbinary import LossBinary
 from src.models.components.loss_function.lovasz_loss import BCE_Lovasz
-
+import torch.nn.functional as F
 
 class SegmentationModule(LightningModule):
     """Example of LightningModule for MNIST classification.

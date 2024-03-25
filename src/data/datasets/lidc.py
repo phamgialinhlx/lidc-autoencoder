@@ -2,6 +2,7 @@ import torch.nn.functional as F
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
+import imageio
 import glob
 import os
 
@@ -43,7 +44,7 @@ class LIDCDataset(Dataset):
         
         imageout = torch.from_numpy(img.copy()).float()
         imageout = imageout.unsqueeze(0)
-        mask = torch.from_numpy(mask.copy()).int()
+        mask = torch.from_numpy(mask.copy())
         mask = mask.unsqueeze(0)
         if self.transforms is not None:
             # Apply additional transformations if provided
@@ -63,3 +64,23 @@ if __name__ == "__main__":
     print("Mask Sum", ds[i]['mask'].sum())
     print(ds[i]['label'])
     # print(ds[0]['da
+    image = ds[i]['data']
+    image = image.permute(1, 2, 3, 0)
+    image = (image + 1.0) * 127.5  # std + mean
+    torch.clamp(image, 0, 255)
+    image = image.cpu().numpy().astype(np.uint8)
+    mask = ds[i]['mask']
+    mask[mask == 1] = 255
+    mask = mask.permute(1, 2, 3, 0)
+    mask = mask.cpu().numpy().astype(np.uint8)
+    frames = []
+    t, h, w, c = image.shape
+    # frame = torch.concat((x[0], y[0], pred[0]), dim=1)  # Concatenate images horizontally
+    # frame = np.concatenate((x[0], y[0], pred[0]), axis=1)  # Concatenate images horizontally
+    from IPython import embed; embed()
+    for i in range(t):
+        # Assuming x, y, and pred are images represented as numpy arrays
+        frame = np.concatenate((image[i], mask[i]), axis=1)  # Concatenate images horizontally
+        frames.append(frame)
+
+    imageio.mimsave("./output.mp4", frames, fps=6)

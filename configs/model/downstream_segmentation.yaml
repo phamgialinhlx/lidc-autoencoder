@@ -2,7 +2,7 @@ _target_: src.models.segmentation_module.SegmentationModule
 
 defaults:
   - net: downstream_unet3d.yaml
-  - criterion: bce_lovasz.yaml
+  - criterion: dice_loss.yaml
 # net:
 #   autoencoder_path: ""
 
