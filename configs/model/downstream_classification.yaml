@@ -5,6 +5,8 @@ defaults:
 
 autoencoder_ckpt_path: ""
 
+loss_weight: [50, 1]
+
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true

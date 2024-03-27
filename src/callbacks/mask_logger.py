@@ -45,8 +45,8 @@ class MaskLogger(Callback):
             y = self.batch['mask'].int().squeeze(0)
             label = self.batch['label']
             pred = pl_module.forward(x)
-            pred = F.sigmoid(pred)
-            pred = pred >= 0.5
+            pred = torch.argmax(pred, dim=1).unsqueeze(0)
+            # pred = pred >= 0.5
             pred = pred.squeeze(0)
             # pred = torch.argmax(pred, dim=1)
             x = (x + 1.0) * 127.5  # std + mean

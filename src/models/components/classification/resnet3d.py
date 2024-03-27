@@ -79,7 +79,7 @@ class ResNet3D(nn.Module):
         out = F.avg_pool3d(out, 4)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
-        return out
+        return F.softmax(out, dim=1)
 
 def ResNet183D():
     return ResNet3D(BasicBlock3D, [2,2,2,2], num_classes=2)

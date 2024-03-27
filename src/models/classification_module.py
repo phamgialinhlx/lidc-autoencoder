@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 from contextlib import contextmanager
 
 import hydra
@@ -24,6 +24,7 @@ class ClassificationModule(LightningModule):
                 compile: bool, 
                 num_classes: int = 2,
                 use_ema: bool = True,
+                loss_weight: List[int] = None,
                 *args: Any, 
                 **kwargs: Any
         ) -> None:
@@ -34,8 +35,7 @@ class ClassificationModule(LightningModule):
         self.net = net        
         
         # loss function
-        self.criterion = torch.nn.CrossEntropyLoss()
-        
+        self.criterion = torch.nn.CrossEntropyLoss(weight=torch.Tensor(loss_weight))
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="micro")
         self.val_acc = Accuracy(task="multiclass", num_classes=num_classes, average="micro")
@@ -88,8 +88,9 @@ class ClassificationModule(LightningModule):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if isinstance(self.autoencoder, VQGAN):
-                x = self.autoencoder.encode(
-                    x, quantize=False, include_embeddings=True)
+                # x = self.autoencoder.encode(
+                    # x, quantize=False, include_embeddings=True)
+            x = self.autoencoder.encoder(x)
         else:
             x = self.autoencoder.encode(x).sample()
         return self.net(x)

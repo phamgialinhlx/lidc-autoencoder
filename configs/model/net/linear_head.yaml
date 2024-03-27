@@ -1,4 +1,4 @@
-_target_: src.models.components.classification.ResNet3D
+_target_: src.models.components.classification.LinearHead
 
 in_features: 262144
 num_classes: 2

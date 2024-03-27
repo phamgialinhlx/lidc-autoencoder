@@ -53,9 +53,9 @@ class SegmentationModule(LightningModule):
         self.val_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
 
-        self.train_dice = Dice()
-        self.val_dice = Dice()
-        self.test_dice = Dice()
+        self.train_dice = Dice(num_classes=2, ignore_index=0)
+        self.val_dice = Dice(num_classes=2, ignore_index=0)
+        self.test_dice = Dice(num_classes=2, ignore_index=0)
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -93,9 +93,11 @@ class SegmentationModule(LightningModule):
 
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
+        # from IPython import embed; embed()
         preds = self.forward(x)
         loss = self.criterion(preds, y)
-
+        preds = torch.argmax(preds, dim=1).unsqueeze(0)
+        # from IPython import embed; embed()
         # Code to try to fix CUDA out of memory issues
         del x
         gc.collect()

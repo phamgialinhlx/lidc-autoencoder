@@ -3,14 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class LinearHead(nn.Module):
-    def __init__(self, in_features, num_classes):
+    def __init__(self, in_features, num_classes, **kwargs):
         super(LinearHead, self).__init__()
         self.fc = nn.Linear(in_features, num_classes)
 
     def forward(self, x):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
-        return x
+        return F.softmax(x, dim=1)
     
 if __name__ == "__main__":
     x = torch.randn(20, 8, 32, 32, 32)
