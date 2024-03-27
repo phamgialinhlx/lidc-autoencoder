@@ -26,7 +26,7 @@ model:
 
     in_channels: 1
     base_channels: 32
-    n_classes: 1
+    n_classes: 2
     number_unet: 3
     conv_layer: Conv3d
     norm_layer: InstanceNorm3d

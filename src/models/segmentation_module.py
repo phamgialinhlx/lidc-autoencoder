@@ -36,6 +36,7 @@ class SegmentationModule(LightningModule):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         criterion: torch.nn.Module,
+        loss_weight = None
     ):
         super().__init__()
 
@@ -47,6 +48,8 @@ class SegmentationModule(LightningModule):
 
         # loss function
         self.criterion = criterion
+        if loss_weight is not None:
+            self.criterion = torch.nn.CrossEntropyLoss(weight=torch.Tensor(loss_weight))
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_jaccard = JaccardIndex(task="binary", num_classes=2)
@@ -80,7 +83,7 @@ class SegmentationModule(LightningModule):
 
     def model_step(self, batch: Any):
         x = batch['data']
-        y = batch['mask'].int()
+        y = batch['mask'].long()
         # from IPython import embed; embed()
         label = batch['label']
         if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
@@ -94,9 +97,9 @@ class SegmentationModule(LightningModule):
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         # from IPython import embed; embed()
-        preds = self.forward(x)
-        loss = self.criterion(preds, y)
-        preds = torch.argmax(preds, dim=1).unsqueeze(0)
+        logits = self.forward(x)
+        loss = self.criterion(logits, y.squeeze(1))
+        preds = torch.argmax(logits, dim=1).unsqueeze(0)
         # from IPython import embed; embed()
         # Code to try to fix CUDA out of memory issues
         del x

@@ -24,7 +24,7 @@ class ClassificationModule(LightningModule):
                 compile: bool, 
                 num_classes: int = 2,
                 use_ema: bool = True,
-                loss_weight: List[int] = None,
+                loss_weight: List = None,
                 *args: Any, 
                 **kwargs: Any
         ) -> None:
@@ -103,7 +103,7 @@ class ClassificationModule(LightningModule):
     def model_step(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         x = batch['data']
         y = batch['label']
-        
+
         logits = self.forward(x)
         loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)

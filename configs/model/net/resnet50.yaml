@@ -1,4 +1,5 @@
 _target_: src.models.components.classification.ResNet3D
 
 num_blocks: [3,4,6,3]
+num_channels: 64
 num_classes: 2

@@ -2,7 +2,7 @@ _target_: src.models.components.segmentation.origin_unetplusplus.UNetPlusPlus3D
 
 in_channels: 1
 base_channels: 16
-n_classes: 1
+n_classes: 2
 number_unet: 4
 conv_layer: Conv3d
 norm_layer: InstanceNorm3d
