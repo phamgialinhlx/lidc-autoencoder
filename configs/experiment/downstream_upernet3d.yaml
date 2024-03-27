@@ -1,0 +1,42 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=vq_gan_3d
+
+
+defaults:
+  - override /data: lidc
+  - override /model: downstream_segmentation
+  - override /callbacks: segmentation
+  - override /trainer: default
+  - override /logger: wandb
+
+tags: ["segmentation", "lidc"]
+task_name: "train_segmentation"
+
+data:
+  train_val_test_split: [800, 110, 100]
+  augmentation: False
+  image_size: 128
+  batch_size: 1
+
+model:
+  net:
+    _target_: src.models.components.segmentation.upernet3d.UPerNet3D
+    autoencoder_path: "./outputs/vq_gan_3d_low_compression/lung-thesis/2aglgm52/checkpoints/epoch=111-step=179200.ckpt"
+
+logger: 
+  wandb:
+    name: "downstream_upernet3d"
+
+callbacks:
+  model_checkpoint:
+    monitor: "val/dice"
+    mode: "max"
+    save_last: True
+    
+trainer:
+  max_epochs: 1000
+  accelerator: gpu
+
+  # precision: 16-mixed
