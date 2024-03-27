@@ -24,7 +24,7 @@ model:
   net: 
     _target_: src.models.components.segmentation.origin_unet3d.UNet3D
     n_channels: 1
-    n_classes: 1
+    n_classes: 2
     width_multiplier: 1
     trilinear: True
     use_ds_conv: False

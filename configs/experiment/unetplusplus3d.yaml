@@ -45,7 +45,7 @@ model:
       stride: 2
       kernel_size: 2
       bias: false
-
+  loss_weight: [1, 100]
 
 logger: 
   wandb:

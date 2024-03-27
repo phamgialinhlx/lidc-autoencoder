@@ -40,13 +40,13 @@ class DETR(nn.Module):
 
     def forward(self, inputs):
         h = self.conv(inputs)
-        print(h.shape)
+        # print(h.shape)
         h = self.downsample(h)
-        print(h.shape)
+        # print(h.shape)
         B, C, T, H, W = h.shape
 
         # construct positional encodings
-        pos_model = PositionalEncoding3D(T * H * W)
+        pos_model = PositionalEncoding3D(T * H * W).to(h.device)
         pos = pos_model(h)
         pos = pos.view(B, T, H, W, C)[0].flatten(0, 2).unsqueeze(1)
         print(self.query_pos.unsqueeze(1).shape)
@@ -56,9 +56,13 @@ class DETR(nn.Module):
         h = self.linear_class(h)
         probas = h.softmax(-1)[0, :, :-1]
         keep = probas.max(-1).values > self.threshold
-        keep_probas = probas[keep]
-        return torch.Tensor([1 - keep_probas.max(), keep_probas.max()])
-        
+        if keep.sum() == 0:
+            return torch.Tensor([[probas.min(), 1 - probas.min()]]).to(h.device)
+        else:
+            keep_probas = probas[keep]
+            # logits = keep_probas.max()
+            return torch.Tensor([[1 - keep_probas.max(), keep_probas.max()]]).to(h.device)
+            
 if __name__ == "__main__":
     net = DETR()
     x = torch.randn(1, 64, 32, 32, 32)
