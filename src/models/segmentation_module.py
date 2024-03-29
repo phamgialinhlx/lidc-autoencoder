@@ -48,9 +48,6 @@ class SegmentationModule(LightningModule):
 
         # loss function
         self.criterion = criterion
-        if loss_weight is not None:
-            self.criterion = torch.nn.CrossEntropyLoss(weight=torch.Tensor(loss_weight))
-            # self.criterion = torch.nn.CrossEntropyLoss(weight=torch.Tensor(loss_weight), ignore_index=0)
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_jaccard = JaccardIndex(task="binary", num_classes=2)
