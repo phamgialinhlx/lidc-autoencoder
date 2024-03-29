@@ -15,19 +15,20 @@ tags: ["segmentation", "lidc"]
 task_name: "train_segmentation"
 
 data:
-  train_val_test_split: [800, 110, 100]
+  train_val_test_split: [80, 10, 10]
   augmentation: False
   image_size: 128
   batch_size: 1
+  mask_only: True
 
 model:
   net: 
     _target_: src.models.components.segmentation.origin_unetplusplus.UNetPlusPlus3D
 
     in_channels: 1
-    base_channels: 32
+    base_channels: 24
     n_classes: 2
-    number_unet: 3
+    number_unet: 4
     conv_layer: Conv3d
     norm_layer: InstanceNorm3d
     activate_layer: LeakyReLU
@@ -45,7 +46,7 @@ model:
       stride: 2
       kernel_size: 2
       bias: false
-  loss_weight: [1, 100]
+  loss_weight: [1, 500]
 
 logger: 
   wandb:

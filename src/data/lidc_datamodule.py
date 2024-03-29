@@ -18,8 +18,9 @@ class LIDCDataModule(LightningDataModule):
         data_dir: str = 'data/lidc',
         batch_size: int = 1,
         image_size: int = 128,
-        train_val_test_split: Tuple[int, int, int] = (10, 1, 1),
+        train_val_test_split: Tuple[int, int, int] = (80, 10, 10),
         augmentation: bool = True,
+        mask_only: bool = False,
         num_workers: int = 0,
         pin_memory: bool = False,
     ) -> None:
@@ -76,10 +77,14 @@ class LIDCDataModule(LightningDataModule):
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            dataset = LIDCDataset(root_dir=self.hparams.data_dir, transforms=self.transforms, augmentation=self.hparams.augmentation)
+            dataset = LIDCDataset(root_dir=self.hparams.data_dir, transforms=self.transforms, augmentation=self.hparams.augmentation, mask_only=self.hparams.mask_only)
+            dataset_length = len(dataset)
+            train_number = int(dataset_length * self.hparams.train_val_test_split[0] / 100)
+            val_number = int(dataset_length * self.hparams.train_val_test_split[1] / 100)
+            test_number = int(dataset_length - train_number - val_number)
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=dataset,
-                lengths=self.hparams.train_val_test_split,
+                lengths=[train_number, val_number, test_number],
                 generator=torch.Generator().manual_seed(42),
             )
 
@@ -152,7 +157,8 @@ class LIDCDataModule(LightningDataModule):
 def main(cfg: DictConfig):
     print(cfg)
     cfg.image_size = 128
-    cfg.train_val_test_split = (800, 110, 100)
+    cfg.train_val_test_split = (80, 10, 10)
+    cfg.mask_only = True
     # cfg.data_dir = "/mnt/work/Code/LIDC-IDRI-Preprocessing/data/"
     datamodule: LIDCDataModule = hydra.utils.instantiate(cfg)
     datamodule.setup()

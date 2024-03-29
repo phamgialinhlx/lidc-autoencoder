@@ -7,10 +7,12 @@ import glob
 import os
 
 class LIDCDataset(Dataset):
-    def __init__(self, root_dir='../LIDC', augmentation=False, transforms=None):
+    def __init__(self, root_dir='../LIDC', augmentation=False, transforms=None, mask_only=False):
         self.root_dir = root_dir
         self.paths = []
-        self.paths = self.paths + self.get_paths(root_dir) + self.get_paths(os.path.join(root_dir, 'Clean'))
+        self.paths = self.paths + self.get_paths(root_dir)
+        if not mask_only:
+            self.paths = self.paths + self.get_paths(os.path.join(root_dir, 'Clean')) 
         self.augmentation = augmentation
         self.transforms = transforms
 
@@ -53,7 +55,7 @@ class LIDCDataset(Dataset):
         return {'data': imageout, 'mask': mask, 'label': label}
 
 if __name__ == "__main__":
-    ds = LIDCDataset(root_dir='/mnt/work/Code/LIDC-IDRI-Preprocessing/data/')
+    ds = LIDCDataset(root_dir='/work/hpc/pgl/LIDC-IDRI-Preprocessing/data/', mask_only=True)
     print('Number of samples in dataset:', ds.__len__() )
     i = 0
     # for i in range(12):
@@ -77,10 +79,11 @@ if __name__ == "__main__":
     t, h, w, c = image.shape
     # frame = torch.concat((x[0], y[0], pred[0]), dim=1)  # Concatenate images horizontally
     # frame = np.concatenate((x[0], y[0], pred[0]), axis=1)  # Concatenate images horizontally
-    from IPython import embed; embed()
-    for i in range(t):
-        # Assuming x, y, and pred are images represented as numpy arrays
-        frame = np.concatenate((image[i], mask[i]), axis=1)  # Concatenate images horizontally
-        frames.append(frame)
+    
+    # from IPython import embed; embed()
+    # for i in range(t):
+    #     # Assuming x, y, and pred are images represented as numpy arrays
+    #     frame = np.concatenate((image[i], mask[i]), axis=1)  # Concatenate images horizontally
+    #     frames.append(frame)
 
-    imageio.mimsave("./output.mp4", frames, fps=6)
+    # imageio.mimsave("./output.mp4", frames, fps=6)
