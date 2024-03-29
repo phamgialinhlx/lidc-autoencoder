@@ -48,7 +48,7 @@ model:
       bias: false
   criterion:
     _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1, 500]
+    weight: [1.0, 500.0]
 
 logger: 
   wandb:

@@ -20,6 +20,5 @@ scheduler:
   patience: 10
 
 # loss_weight: [0.02, 1.0]
-loss_weight: [1, 500]
 # compile model for faster training with pytorch 2.0
 # compile: false
