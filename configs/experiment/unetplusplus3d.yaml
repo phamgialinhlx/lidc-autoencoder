@@ -46,7 +46,9 @@ model:
       stride: 2
       kernel_size: 2
       bias: false
-  loss_weight: [1, 500]
+  criterion:
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [1, 500]
 
 logger: 
   wandb:
