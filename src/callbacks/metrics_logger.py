@@ -5,7 +5,7 @@ from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks import Callback
 from einops import rearrange
 from pytorch_msssim import SSIM, MS_SSIM
-from src.models.vq_gan_3d_module import VQGAN
+from src.models import VQGAN, MultiheadVQGAN
 
 class MetricsLogger(Callback):
     def __init__(
@@ -78,7 +78,7 @@ class MetricsLogger(Callback):
                    pl_module: LightningModule,
                    reals: Tensor | None = None,
                    conds: Dict[str, Tensor] = None):
-        if isinstance(pl_module, VQGAN):
+        if isinstance(pl_module, VQGAN) or isinstance(pl_module, MultiheadVQGAN):
             if pl_module.use_ema:
                 with pl_module.ema_scope():
                     _, _, reals, fakes = pl_module(reals, log_image=True)

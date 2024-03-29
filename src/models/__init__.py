@@ -1,4 +1,5 @@
 from .vq_gan_3d_module import VQGAN
+from .multihead_autoencoder_module import MultiheadVQGAN
 from .diffusion_module import DiffusionModule
 from .classification_module import ClassificationModule
 # from .segmentation_module import SegmentationModule
