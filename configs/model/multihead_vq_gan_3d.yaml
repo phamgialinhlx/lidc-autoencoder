@@ -1,0 +1,43 @@
+_target_: src.models.MultiheadVQGAN
+
+
+
+embedding_dim: 8
+# n_codes: 16384
+n_codes: 512
+n_hiddens: 16
+lr: 3e-4
+image_channels: 1
+downsample: [4, 4, 4]
+disc_channels: 64
+disc_layers: 1
+discriminator_iter_start: 10000
+disc_loss_type: "hinge"
+image_gan_weight: 1.0
+video_gan_weight: 1.0
+l1_weight: 4.0
+gan_feat_weight: 4
+perceptual_weight: 4.0
+i3d_feat: False
+restart_thres: 1.0
+no_random_restart: False
+norm_type: "group"
+padding_type: "replicate"
+num_groups: 32
+use_ema: True
+segmentation_decoder:
+  _target_: src.models.components.segmentation.encoder_unet3d.EncoderUNet3D
+  n_channels: 1
+  n_classes: 1
+segmentation_criterion: 
+  _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+  weight: [1, 800]
+classifier_head:
+  _target_: src.models.components.classification.ResNet3D
+  num_blocks: [2, 2, 2, 2]
+  num_channels: 64
+  num_classes: 2
+clasification_criterion:
+  _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+  weight: [1, 800]
+
