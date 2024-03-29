@@ -60,8 +60,8 @@ class SegmentationMetrics(Callback):
         self.test_loss.reset()
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        loss = outputs["loss"]
-        preds = outputs["preds"]
+        loss = outputs["seg_loss"]
+        preds = outputs["seg_preds"]
         targets = batch["mask"].long()
 
         self.train_loss(loss)
@@ -69,8 +69,8 @@ class SegmentationMetrics(Callback):
         self.train_dice(preds, targets.int())
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
-        loss = outputs["loss"]
-        preds = outputs["preds"]
+        loss = outputs["seg_loss"]
+        preds = outputs["seg_preds"]
         targets = batch["mask"].long()
 
         self.val_loss(loss)
@@ -78,8 +78,8 @@ class SegmentationMetrics(Callback):
         self.val_dice(preds, targets.int())
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
-        loss = outputs["loss"]
-        preds = outputs["preds"]
+        loss = outputs["seg_loss"]
+        preds = outputs["seg_preds"]
         targets = batch["mask"].long()
 
         self.test_loss(loss)
@@ -87,13 +87,13 @@ class SegmentationMetrics(Callback):
         self.test_dice(preds, targets.int())
 
     def on_validation_epoch_end(self, trainer, pl_module):
-        pl_module.log("train/segmentation_loss", self.train_loss, metric_attribute="train_loss", on_step=False, on_epoch=True, prog_bar=True)
+        pl_module.log("train/seg_loss", self.train_loss, metric_attribute="train_loss", on_step=False, on_epoch=True, prog_bar=True)
         pl_module.log("train/jaccard", self.train_jaccard.compute())
         pl_module.log("train/dice", self.train_dice.compute())
 
         val_jaccard = self.val_jaccard.compute()
         val_dice = self.val_dice.compute()
-        pl_module.log("val/segmentation_loss", self.val_loss, metric_attribute="val_loss", on_step=False, on_epoch=True, prog_bar=True)
+        pl_module.log("val/seg_loss", self.val_loss, metric_attribute="val_loss", on_step=False, on_epoch=True, prog_bar=True)
         pl_module.log("val/jaccard", val_jaccard)
         pl_module.log("val/dice", val_dice)
 
@@ -103,7 +103,7 @@ class SegmentationMetrics(Callback):
         pl_module.log("val/dice_best", self.val_metric_best_2)
 
         if trainer.testing:
-            pl_module.log("test/segmentation_loss", self.test_loss, metric_attribute="test_loss", on_step=False, on_epoch=True, prog_bar=True)
+            pl_module.log("test/seg_loss", self.test_loss, metric_attribute="test_loss", on_step=False, on_epoch=True, prog_bar=True)
             pl_module.log("test/jaccard", self.test_jaccard.compute())
             pl_module.log("test/dice", self.test_dice.compute())
     # def on_validation_epoch_end(self):

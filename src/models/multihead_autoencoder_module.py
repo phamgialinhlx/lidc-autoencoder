@@ -125,16 +125,17 @@ class MultiheadVQGAN(LightningModule):
 
         self.l1_weight = l1_weight
 
-        self.use_ema = use_ema
-        if self.use_ema:
-            self.model_ema = LitEma(self)
-            print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
-
         self.segmentation_decoder = segmentation_decoder
         self.segmentation_criterion = segmentation_criterion
         self.classifier_head = classifier_head
         self.clasification_criterion = clasification_criterion
         self.bn = nn.BatchNorm3d(self.enc_out_ch)
+
+        self.use_ema = use_ema
+        if self.use_ema:
+            self.model_ema = LitEma(self)
+            print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
+
 
     @contextmanager
     def ema_scope(self, context=None):
@@ -172,9 +173,8 @@ class MultiheadVQGAN(LightningModule):
     def forward_clasification(self, batch):
         x = batch['data']
         y = batch['label']
-
-        logits = self.classifier_head(self.encoder(self.bn(x)))
-        loss = self.criterion(logits, y)
+        logits = self.classifier_head(self.bn(self.encoder(x)))
+        loss = self.clasification_criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
     
@@ -182,7 +182,7 @@ class MultiheadVQGAN(LightningModule):
         x = batch['data']
         y = batch['mask'].long()
         label = batch['label']
-        if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
+        if isinstance(self.segmentation_criterion, (LossBinary, BCE_Lovasz)):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
             if cnt1 != 0:
@@ -190,11 +190,11 @@ class MultiheadVQGAN(LightningModule):
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
 
-            self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
+            self.segmentation_criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
+        logits = self.segmentation_decoder(self.encoder, x)
         # from IPython import embed; embed()
-        logits = self.forward(x)
-        loss = self.criterion(logits, y.squeeze(1))
+        loss = self.segmentation_criterion(logits, y.squeeze(1))
         preds = torch.argmax(logits, dim=1).unsqueeze(0)
         # from IPython import embed; embed()
         # Code to try to fix CUDA out of memory issues
@@ -358,30 +358,37 @@ class MultiheadVQGAN(LightningModule):
         
         if self.segmentation_decoder != None:
             opt_seg.zero_grad()
-            seg_loss, preds, y = self.forward_segmentation(batch)
+            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
             self.manual_backward(seg_loss)
             opt_seg.step()
         
         if self.classifier_head != None:
             opt_cls.zero_grad()
-            cls_loss, preds, y = self.forward_clasification(batch)
+            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
             self.manual_backward(cls_loss)
             opt_cls.step()
-
+        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
+                "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
+        
     def validation_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
         if self.use_ema:
             with self.ema_scope():
                 recon_loss, _, vq_output, perceptual_loss = self.forward(x)
+                seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+                cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
         else:
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-        
+            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
 
         self.log('val/recon_loss', recon_loss, prog_bar=True)
         self.log('val/perceptual_loss', perceptual_loss, prog_bar=True)
         self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)
         self.log('val/commitment_loss',
                  vq_output['commitment_loss'], prog_bar=True)
+        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
+                "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
 
     def test_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
@@ -389,15 +396,20 @@ class MultiheadVQGAN(LightningModule):
         if self.use_ema:
             with self.ema_scope():
                 recon_loss, _, vq_output, perceptual_loss = self.forward(x)
+                seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+                cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
         else:
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-        
+            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
 
         self.log('test/recon_loss', recon_loss, prog_bar=True)
         self.log('test/perceptual_loss', perceptual_loss, prog_bar=True)
         self.log('test/perplexity', vq_output['perplexity'], prog_bar=True)
         self.log('test/commitment_loss',
                  vq_output['commitment_loss'], prog_bar=True)
+        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
+                "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
 
 
     def configure_optimizers(self):

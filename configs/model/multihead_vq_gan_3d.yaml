@@ -3,8 +3,7 @@ _target_: src.models.MultiheadVQGAN
 
 
 embedding_dim: 8
-# n_codes: 16384
-n_codes: 512
+n_codes: 16384
 n_hiddens: 16
 lr: 3e-4
 image_channels: 1
@@ -28,10 +27,10 @@ use_ema: True
 segmentation_decoder:
   _target_: src.models.components.segmentation.encoder_unet3d.EncoderUNet3D
   n_channels: 1
-  n_classes: 1
+  n_classes: 2
 segmentation_criterion: 
   _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-  weight: [1, 800]
+  weight: [1.0, 800.0]
 classifier_head:
   _target_: src.models.components.classification.ResNet3D
   num_blocks: [2, 2, 2, 2]
@@ -39,5 +38,5 @@ classifier_head:
   num_classes: 2
 clasification_criterion:
   _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-  weight: [1, 800]
+  weight: [1.0, 800.0]
 

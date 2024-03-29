@@ -1,9 +1,11 @@
 defaults:
-defaults:
+  - segmentation_metrics
+  - classification_metrics
   - model_checkpoint
   - model_summary
   - rich_progress_bar
   - image_logger
+  - mask_logger
   - video_logger
   - metrics_logger
   - _self_

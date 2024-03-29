@@ -11,21 +11,21 @@ defaults:
   - override /trainer: default
   - override /logger: wandb
 
-tags: ["autoencoder", "vqgan_3d", "lidc"]
+tags: ["autoencoder", "vqgan_3d", "multihead", "lidc"]
 task_name: "train autoencoder"
 
 model:
-  use_ema: False
+  use_ema: True
 
 data:
-  train_val_test_split: [1, 1, 98]
+  train_val_test_split: [80, 10, 10]
   augmentation: False
   image_size: 128
   batch_size: 1
 
 logger: 
   wandb:
-    name: "multihead_autoencoder_dev"
+    name: "multihead_autoencoder"
 
 callbacks:
   metrics_logger:

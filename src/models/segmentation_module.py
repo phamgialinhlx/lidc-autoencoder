@@ -84,25 +84,25 @@ class SegmentationModule(LightningModule):
         return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.model_step(batch)
-        self.train_loss(loss)
+        seg_loss, seg_preds, seg_targets = self.model_step(batch)
+        self.train_loss(seg_loss)
         self.log("train/segmentation_loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         # we can return here dict with any tensors
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.model_step(batch)
-        self.val_loss(loss)
+        seg_loss, seg_preds, seg_targets = self.model_step(batch)
+        self.val_loss(seg_loss)
         self.log("val/segmentation_loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.model_step(batch)
+        seg_loss, seg_preds, seg_targets = self.model_step(batch)
 
         # update and log metrics
-        self.test_loss(loss)
+        self.test_loss(seg_loss)
         self.log("test/segmentation_loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

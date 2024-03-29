@@ -44,7 +44,10 @@ class MaskLogger(Callback):
             
             y = self.batch['mask'].int().squeeze(0)
             label = self.batch['label']
-            pred = pl_module.forward(x)
+            if (hasattr(pl_module, "forward_segmentation")):
+                _, pred, _ = pl_module.forward_segmentation(self.batch)
+            else:
+                pred = pl_module.forward(x)
             pred = torch.argmax(pred, dim=1).unsqueeze(0)
             # pred = pred >= 0.5
             pred = pred.squeeze(0)
@@ -70,7 +73,7 @@ class MaskLogger(Callback):
             for i in range(t):
                 # Assuming x, y, and pred are images represented as numpy arrays
                 frame = np.concatenate((x[i], y[i], pred[i]), axis=1)  # Concatenate images horizontally
-                frames.append(frame)
+                frames.append(frame.astype(np.uint8))
 
             imageio.mimsave(path, frames, fps=6)
  
@@ -79,7 +82,7 @@ class MaskLogger(Callback):
             
             pl_module.logger.experiment.log(
                 {
-                    "video": [
+                    "video_gt_pred": [
                         wandb.Video(path),
                     ],
                     "caption": [split + "_" + c for c in ["video"]],

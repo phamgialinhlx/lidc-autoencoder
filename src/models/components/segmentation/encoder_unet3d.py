@@ -10,7 +10,7 @@ import torch.nn.functional as F
 class EncoderUNet3D(nn.Module):
     def __init__(self,
             n_channels=1,
-            n_classes=1, 
+            n_classes=2, 
             width_multiplier=1, \
             trilinear=True, \
             use_ds_conv=False
@@ -62,7 +62,7 @@ class EncoderUNet3D(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return F.sigmoid(logits)
+        return F.softmax(logits, dim=1)
 
 
 class DoubleConv(nn.Module):
