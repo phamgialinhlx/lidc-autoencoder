@@ -2,10 +2,9 @@ _target_: src.models.ClassificationModule
 
 defaults:
   - net: resnet18.yaml
+  - criterion: cross_entropy.yaml
 
 autoencoder_ckpt_path: ""
-
-loss_weight: [1.0, 0.05]
 
 optimizer:
   _target_: torch.optim.Adam

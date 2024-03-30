@@ -7,7 +7,7 @@
 defaults:
   - override /data: lidc
   - override /model: downstream_classification
-  - override /callbacks: "classification"
+  - override /callbacks: classification
   - override /trainer: default
   - override /logger: wandb
 
@@ -15,14 +15,18 @@ tags: ["classification", "lidc"]
 task_name: "train_classification"
 
 data:
-  train_val_test_split: [800, 110, 100]
+  train_val_test_split: [80, 10, 10]
+  # train_val_test_split: [1, 1, 98]
   augmentation: False
   image_size: 128
   batch_size: 1
 
 model:
   autoencoder_ckpt_path: "./outputs/vq_gan_3d_low_compression/lung-thesis/2aglgm52/checkpoints/epoch=111-step=179200.ckpt"
-
+  criterion:
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [100.0, 1.0]
+    
 logger: 
   wandb:
     name: "downstream_resnet18"

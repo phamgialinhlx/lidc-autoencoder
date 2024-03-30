@@ -330,7 +330,6 @@ class MultiheadVQGAN(LightningModule):
             self.model_ema(self)
 
     def training_step(self, batch, batch_idx):
-        from IPython import embed; embed()
         x = batch['data']
         opt_list = self.optimizers()
         opt_ae = opt_list[0]
@@ -445,12 +444,12 @@ class MultiheadVQGAN(LightningModule):
             opt_ds = torch.optim.Adam(list(self.segmentation_decoder.parameters()) +
                                       list(self.encoder.parameters()) +
                                       list(self.classifier_head.parameters()), 
-                                      lr=lr, betas=(0.5, 0.9))
+                                      lr=0.001, betas=(0.5, 0.9))
             opt_list.append(opt_ds)
         else:
             if self.segmentation_decoder != None:
                 opt_seg = torch.optim.Adam(list(self.segmentation_decoder.parameters()) +
-                                        list(self.encoder.parameters()), lr=lr, betas=(0.5, 0.9))
+                                        list(self.encoder.parameters()), lr=0.01, betas=(0.5, 0.9))
                 opt_list.append(opt_seg)
             if self.classifier_head != None:
                 opt_cls = torch.optim.Adam(list(self.classifier_head.parameters()) +

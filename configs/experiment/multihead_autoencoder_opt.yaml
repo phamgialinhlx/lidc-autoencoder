@@ -19,8 +19,8 @@ model:
   use_same_optimizer: True
 
 data:
-  # train_val_test_split: [80, 10, 10]
-  train_val_test_split: [1, 1, 98]
+  train_val_test_split: [80, 10, 10]
+  # train_val_test_split: [1, 1, 98]
   augmentation: False
   image_size: 128
   batch_size: 1
