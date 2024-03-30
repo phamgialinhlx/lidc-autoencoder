@@ -38,5 +38,5 @@ classifier_head:
   num_classes: 2
 clasification_criterion:
   _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-  weight: [1.0, 800.0]
+  weight: [800.0, 1.0]
 
