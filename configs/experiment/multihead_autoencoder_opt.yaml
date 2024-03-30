@@ -1,0 +1,53 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=vq_gan_3d
+
+
+defaults:
+  - override /data: lidc
+  - override /model: multihead_vq_gan_3d
+  - override /callbacks: multihead_ae
+  - override /trainer: default
+  - override /logger: wandb
+
+tags: ["autoencoder", "vqgan_3d", "multihead", "lidc"]
+task_name: "train autoencoder"
+
+model:
+  use_ema: True
+  use_same_optimizer: True
+
+data:
+  # train_val_test_split: [80, 10, 10]
+  train_val_test_split: [1, 1, 98]
+  augmentation: False
+  image_size: 128
+  batch_size: 1
+
+logger: 
+  wandb:
+    name: "multihead_autoencoder_opt"
+
+callbacks:
+  metrics_logger:
+    ssim: 
+      _target_: pytorch_msssim.SSIM
+      data_range: 1
+      size_average: True
+      channel: 1
+    msssim: 
+      _target_: pytorch_msssim.MS_SSIM
+      data_range: 1 
+      size_average: True
+      channel: 1
+      win_size: 3
+      
+  model_checkpoint:
+    monitor: "val/msssim"
+    mode: "max"
+    save_last: True
+    
+trainer:
+  max_epochs: 1000
+  # precision: 16-mixed

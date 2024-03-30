@@ -24,6 +24,7 @@ norm_type: "group"
 padding_type: "replicate"
 num_groups: 32
 use_ema: True
+use_same_optimizer: False
 segmentation_decoder:
   _target_: src.models.components.segmentation.encoder_unet3d.EncoderUNet3D
   n_channels: 1
