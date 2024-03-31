@@ -3,8 +3,8 @@ from lightning.pytorch.callbacks import Callback
 from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 
 class SegmentationMetrics(Callback):
-    def __init__(self):
-        super().__init__(device="cpu")
+    def __init__(self, device="cpu"):
+        super().__init__()
         self.train_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.val_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
@@ -21,7 +21,8 @@ class SegmentationMetrics(Callback):
         # self.val_metric_best_2 = MaxMetric()
         self.val_metric_best_1 = float("-inf")
         self.val_metric_best_2 = float("-inf")
-
+        self.device = device
+        
     def on_fit_start(self, trainer, pl_module):
         self.train_jaccard = self.train_jaccard.to(self.device)
         self.val_jaccard = self.val_jaccard.to(self.device)
