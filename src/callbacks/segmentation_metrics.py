@@ -4,7 +4,7 @@ from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 
 class SegmentationMetrics(Callback):
     def __init__(self):
-        super().__init__()
+        super().__init__(device="cpu")
         self.train_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.val_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
@@ -23,17 +23,17 @@ class SegmentationMetrics(Callback):
         self.val_metric_best_2 = float("-inf")
 
     def on_fit_start(self, trainer, pl_module):
-        self.train_jaccard = self.train_jaccard.to(pl_module.device)
-        self.val_jaccard = self.val_jaccard.to(pl_module.device)
-        self.test_jaccard = self.test_jaccard.to(pl_module.device)
+        self.train_jaccard = self.train_jaccard.to(self.device)
+        self.val_jaccard = self.val_jaccard.to(self.device)
+        self.test_jaccard = self.test_jaccard.to(self.device)
         
-        self.train_dice = self.train_dice.to(pl_module.device)
-        self.val_dice = self.val_dice.to(pl_module.device)
-        self.test_dice = self.test_dice.to(pl_module.device)
+        self.train_dice = self.train_dice.to(self.device)
+        self.val_dice = self.val_dice.to(self.device)
+        self.test_dice = self.test_dice.to(self.device)
         
-        self.train_loss = self.train_loss.to(pl_module.device)
-        self.val_loss = self.val_loss.to(pl_module.device)
-        self.test_loss = self.test_loss.to(pl_module.device)
+        self.train_loss = self.train_loss.to(self.device)
+        self.val_loss = self.val_loss.to(self.device)
+        self.test_loss = self.test_loss.to(self.device)
 
     # def on_train_start(self):
     #     # by default lightning executes validation step sanity checks before training starts,
@@ -64,27 +64,27 @@ class SegmentationMetrics(Callback):
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
 
-        self.train_loss(loss)
-        self.train_jaccard(preds, targets)
-        self.train_dice(preds, targets.int())
+        self.train_loss(loss.to(self.device))
+        self.train_jaccard(preds.to(self.device), targets.to(self.device))
+        self.train_dice(preds.to(self.device), targets.int().to(self.device))
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
 
-        self.val_loss(loss)
-        self.val_jaccard(preds, targets)
-        self.val_dice(preds, targets.int())
+        self.val_loss(loss.to(self.device))
+        self.val_jaccard(preds.to(self.device), targets.to(self.device))
+        self.val_dice(preds.to(self.device), targets.int().to(self.device))
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
 
-        self.test_loss(loss)
-        self.test_jaccard(preds, targets)
-        self.test_dice(preds, targets.int())
+        self.test_loss(loss.to(self.device))
+        self.test_jaccard(preds.to(self.device), targets.to(self.device))
+        self.test_dice(preds.to(self.device), targets.int().to(self.device))
 
     def on_validation_epoch_end(self, trainer, pl_module):
         pl_module.log("train/seg_loss", self.train_loss, metric_attribute="train_loss", on_step=False, on_epoch=True, prog_bar=True)
