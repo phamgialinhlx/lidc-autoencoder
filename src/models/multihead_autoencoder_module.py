@@ -391,20 +391,25 @@ class MultiheadVQGAN(LightningModule):
         if self.use_ema:
             with self.ema_scope():
                 recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-                seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-                cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
+                if self.segmentation_decoder != None:
+                    seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+                if self.classifier_head != None:
+                    cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
         else:
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
+            if self.segmentation_decoder != None:
+                seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+            if self.classifier_head != None:
+                cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
 
         self.log('val/recon_loss', recon_loss, prog_bar=True)
         self.log('val/perceptual_loss', perceptual_loss, prog_bar=True)
         self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)
-        self.log('val/commitment_loss',
-                 vq_output['commitment_loss'], prog_bar=True)
-        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
-                "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
+        self.log('val/commitment_loss', vq_output['commitment_loss'], prog_bar=True)
+        
+        if self.segmentation_decoder != None and self.classifier_head != None:
+            return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
+                    "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
 
     def test_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
@@ -412,12 +417,16 @@ class MultiheadVQGAN(LightningModule):
         if self.use_ema:
             with self.ema_scope():
                 recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-                seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-                cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
+                if self.segmentation_decoder != None:
+                    seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+                if self.classifier_head != None:
+                    cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
         else:
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
+            if self.segmentation_decoder != None:
+                seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+            if self.classifier_head != None:
+                cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
 
         self.log('test/recon_loss', recon_loss, prog_bar=True)
         self.log('test/perceptual_loss', perceptual_loss, prog_bar=True)

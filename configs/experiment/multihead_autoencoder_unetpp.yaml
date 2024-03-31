@@ -1,0 +1,80 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=vq_gan_3d
+
+
+defaults:
+  - override /data: lidc
+  - override /model: multihead_vq_gan_3d
+  - override /callbacks: multihead_ae
+  - override /trainer: default
+  - override /logger: wandb
+
+tags: ["autoencoder", "vqgan_3d", "multihead", "lidc"]
+task_name: "train autoencoder"
+
+model:
+  use_ema: True
+  segmentation_decoder:
+    _target_: src.models.components.segmentation.encoder_unetplusplus3d.EncoderUNetPlusPlus3D
+    in_channels: 1
+    base_channels: 16
+    n_classes: 2
+    number_unet: 4
+    conv_layer: Conv3d
+    norm_layer: InstanceNorm3d
+    activate_layer: LeakyReLU
+    transpconv_layer: ConvTranspose3d
+    conv_kwargs:
+      kernel_size: 3
+      padding: 1
+    norm_kwargs:
+      eps: 1e-05
+      affine: true
+    activate_kwargs:
+      negative_slope: 0.01
+      inplace: true
+    transpconv_kwargs:
+      stride: 2
+      kernel_size: 2
+      bias: false
+  classifier_head:
+    _target_: src.models.components.classification.resnet3d_head.ResNet3DHead
+    num_blocks: [1, 1]
+    # num_channels: 128
+    num_classes: 2
+
+data:
+  train_val_test_split: [80, 10, 10]
+  # train_val_test_split: [1, 1, 98]
+  augmentation: False
+  image_size: 128
+  batch_size: 1
+
+logger: 
+  wandb:
+    name: "multihead_autoencoder_unetpp"
+
+callbacks:
+  metrics_logger:
+    ssim: 
+      _target_: pytorch_msssim.SSIM
+      data_range: 1
+      size_average: True
+      channel: 1
+    msssim: 
+      _target_: pytorch_msssim.MS_SSIM
+      data_range: 1 
+      size_average: True
+      channel: 1
+      win_size: 3
+      
+  model_checkpoint:
+    monitor: "val/msssim"
+    mode: "max"
+    save_last: True
+    
+trainer:
+  max_epochs: 1000
+  # precision: 16-mixed

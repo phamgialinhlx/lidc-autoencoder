@@ -10,7 +10,8 @@ import torch.nn.functional as F
 class EncoderUNet3D(nn.Module):
     def __init__(self,
             n_channels=1,
-            n_classes=2, 
+            n_classes=2,
+            base_channel = 16, 
             width_multiplier=1, \
             trilinear=True, \
             use_ds_conv=False
@@ -27,7 +28,8 @@ class EncoderUNet3D(nn.Module):
                   appears to be because with 3D data, the vast vast majority of GPU RAM is the input data/labels, not the params, so little
                   VRAM is saved by using ds_conv, and yet performance suffers."""
         super(EncoderUNet3D, self).__init__()
-        _channels = (16, 32, 64, 128, 256, 512)
+        # _channels = (16, 32, 64, 128, 256, 512)
+        _channels = (base_channel, base_channel*2, base_channel*4, base_channel*8, base_channel*16)
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.channels = [int(c*width_multiplier) for c in _channels]
