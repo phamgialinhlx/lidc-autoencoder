@@ -16,6 +16,13 @@ task_name: "train autoencoder"
 
 model:
   use_ema: True
+  use_same_optimizer: False
+  segmentation_criterion: 
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [1.0, 800.0]
+  clasification_criterion:
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [100.0, 1.0]
 
 data:
   train_val_test_split: [80, 10, 10]
@@ -45,6 +52,10 @@ callbacks:
     monitor: "val/msssim"
     mode: "max"
     save_last: True
+  
+  segmentation_metrics:
+    _target_: src.callbacks.segmentation_metrics.SegmentationMetrics
+    device: "cuda"
     
 trainer:
   max_epochs: 1000

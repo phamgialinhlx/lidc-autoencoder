@@ -15,7 +15,7 @@ tags: ["autoencoder", "vqgan_3d", "multihead", "lidc"]
 task_name: "train autoencoder"
 
 model:
-  use_ema: True
+  use_ema: False
   segmentation_decoder:
     _target_: src.models.components.segmentation.encoder_unetplusplus3d.EncoderUNetPlusPlus3D
     in_channels: 1

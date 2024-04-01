@@ -3,6 +3,6 @@ data_dir: '/work/hpc/pgl/LIDC-IDRI-Preprocessing/data'
 batch_size: 1
 image_size: 128
 train_val_test_split: [800, 110, 100]
-num_workers: 0
+num_workers: 4
 pin_memory: False
 mask_only: False
