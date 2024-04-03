@@ -134,9 +134,10 @@ def main(cfg: DictConfig):
     # shutil.rmtree('outputs')
     print(cfg)
     cfg.net.autoencoder_path = "./outputs/vq_gan_3d_low_compression/lung-thesis/2aglgm52/checkpoints/epoch=111-step=179200.ckpt"
-    from IPython import embed; embed()
+    from IPython import embed
+    embed()
     model = hydra.utils.instantiate(cfg)
-    input_tensor = torch.randn(1, 1, 128, 128, 128) #.to('cuda')
+    input_tensor = torch.randn(1, 1, 128, 128, 128) # .to('cuda')
     output = model(input_tensor)
     print(output.shape)
     # encoded_output = model.encoder(input_tensor)

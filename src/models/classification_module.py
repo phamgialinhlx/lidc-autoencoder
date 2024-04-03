@@ -74,7 +74,7 @@ class ClassificationModule(LightningModule):
         loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
-    
+
     def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         loss, preds, y = self.model_step(batch)
         return {"cls_loss": loss, "cls_preds": preds, "cls_targets": y, "loss": loss}

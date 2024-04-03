@@ -36,10 +36,10 @@ class BasicBlock3D(nn.Module):
         self.bn2 = nn.BatchNorm3d(planes)
 
         self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
+        if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
-                SamePadConv3d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, padding_type='replicate', bias=False),
-                nn.BatchNorm3d(self.expansion*planes)
+                SamePadConv3d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, padding_type='replicate', bias=False),
+                nn.BatchNorm3d(self.expansion * planes)
             )
 
     def forward(self, x):
@@ -50,7 +50,7 @@ class BasicBlock3D(nn.Module):
         return out
 
 class ResNet3DHead(nn.Module):
-    def __init__(self, block=BasicBlock3D, num_blocks=[2,2,2,2], num_channels=8, num_classes=10):
+    def __init__(self, block=BasicBlock3D, num_blocks=[2, 2, 2, 2], num_channels=8, num_classes=10):
         super(ResNet3DHead, self).__init__()
         self.in_planes = 64
         self.register_buffer('num_channels', torch.tensor(num_channels))
@@ -64,7 +64,7 @@ class ResNet3DHead(nn.Module):
         self.linear = nn.Linear(8192, num_classes)
 
     def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1]*(num_blocks-1)
+        strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
             layers.append(block(self.in_planes, planes, stride))

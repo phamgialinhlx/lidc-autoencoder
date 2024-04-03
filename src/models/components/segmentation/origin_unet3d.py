@@ -9,12 +9,11 @@ import torch.nn.functional as F
 class UNet3D(nn.Module):
     def __init__(self,
             n_channels,
-            n_classes, 
+            n_classes,
             width_multiplier=1, \
             trilinear=True, \
             use_ds_conv=False,
-            *args, **kwargs
-        ):
+            *args, **kwargs):
         """A simple 3D Unet, adapted from a 2D Unet from https://github.com/milesial/Pytorch-UNet/tree/master/unet
         Arguments:
           n_channels = number of input channels; 3 for RGB, 1 for grayscale input
@@ -30,7 +29,7 @@ class UNet3D(nn.Module):
         _channels = (64, 128, 256, 512, 1024)
         self.n_channels = n_channels
         self.n_classes = n_classes
-        self.channels = [int(c*width_multiplier) for c in _channels]
+        self.channels = [int(c * width_multiplier) for c in _channels]
         self.trilinear = trilinear
         self.convtype = DepthwiseSeparableConv3d if use_ds_conv else nn.Conv3d
 
@@ -46,7 +45,7 @@ class UNet3D(nn.Module):
         self.up4 = Up(self.channels[1], self.channels[0], trilinear)
         self.outc = OutConv(self.channels[0], n_classes)
         # self.conv_last = DoubleConv(n_classes, n_classes, conv_type=self.convtype)
-        
+
     def forward(self, x):
         x1 = self.inc(x)
         x2 = self.down1(x1)
@@ -58,7 +57,6 @@ class UNet3D(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        
         return F.sigmoid(logits)
 
 
@@ -110,7 +108,6 @@ class Up(nn.Module):
             self.up = nn.ConvTranspose3d(in_channels, in_channels // 2, kernel_size=2, stride=2)
             self.conv = DoubleConv(in_channels, out_channels)
 
-
     def forward(self, x1, x2):
         x1 = self.up(x1)
         # input is CHW
@@ -151,7 +148,7 @@ if __name__ == "__main__":
     n_channels = 1  # Assuming grayscale input
     n_classes = 1   # Number of output classes
     unet_model = UNet3D(
-        n_channels, 
+        n_channels,
         n_classes
     )
 

@@ -8,8 +8,8 @@ import torch.nn.functional as F
 
 
 class EncoderUNetPlusPlus3D(nn.Module):
-    def __init__(self, in_channels, base_channels, n_classes, number_unet, 
-                 conv_layer, norm_layer, activate_layer, transpconv_layer, 
+    def __init__(self, in_channels, base_channels, n_classes, number_unet,
+                 conv_layer, norm_layer, activate_layer, transpconv_layer,
                  conv_kwargs, norm_kwargs, activate_kwargs, transpconv_kwargs, **kwargs):
         super(EncoderUNetPlusPlus3D, self).__init__()
         self.n_classes = n_classes
@@ -23,7 +23,7 @@ class EncoderUNetPlusPlus3D(nn.Module):
         self.activate_layer = activate_layer if type(activate_layer) is not str else getattr(nn, activate_layer)
         # name of transposed convolution layer
         self.transpconv_layer = transpconv_layer if type(transpconv_layer) is not str else getattr(nn, transpconv_layer)
-        
+
         # parameters of convolution layer
         self.conv_kwargs = conv_kwargs
         # parameters of normalization layer
@@ -33,18 +33,16 @@ class EncoderUNetPlusPlus3D(nn.Module):
         # parameters of transposed convolution layer
         self.transpconv_kwargs = transpconv_kwargs
 
-
         # down convolution modules
         self.down_conv_modules = [None] * number_unet
         # up convolution modules
         self.up_modules = [[None] * (i + 1) for i in range(number_unet)]
         # up convolution modules
         self.up_conv_modules = [[None] * (i + 1) for i in range(number_unet)]
-        
-       
+
         # # number of channels at each level
         self.channels = [base_channels] + [base_channels * (2 ** (i + 1)) for i in range(number_unet)]
-            
+
         # initial modules for unetplusplus
         for i in range(number_unet):
             # i-th unet
@@ -57,26 +55,26 @@ class EncoderUNetPlusPlus3D(nn.Module):
             for j in range(i + 1):
                 # sum of channels after concat
                 in_channels_conv = (j + 2) * self.channels[i - j]
-                
+
                 # j-th up layer of i-th unet
                 self.up_modules[i][j], self.up_conv_modules[i][j] = \
-                    self.get_up_block(self.channels[i + 1 - j], self.channels[i - j], in_channels_conv)            
-        
+                    self.get_up_block(self.channels[i + 1 - j], self.channels[i - j], in_channels_conv)
+
             self.up_modules[i] = nn.ModuleList(self.up_modules[i])
             self.up_conv_modules[i] = nn.ModuleList(self.up_conv_modules[i])
-        
+
         self.down_conv_modules = nn.ModuleList(self.down_conv_modules)
         self.up_modules = nn.ModuleList(self.up_modules)
         self.up_conv_modules = nn.ModuleList(self.up_conv_modules)
-        
+
         # output convolution to n_classes
         self.output_conv = nn.Conv3d(base_channels, n_classes, kernel_size=1, stride=1, padding=0, bias=False)
         # self.softmax = nn.Softmax(dim=1)
         self.sigmoid = nn.Sigmoid()
-    
+
     def forward(self, encoder, input):
         x = [[None] * (i + 1) for i in range(self.number_unet + 1)]
-        # input convolution layer to base_channels 
+        # input convolution layer to base_channels
         x[0][0] = encoder.conv_first(input)
         blocks = encoder.conv_blocks
         for i in range(self.number_unet):
@@ -94,20 +92,20 @@ class EncoderUNetPlusPlus3D(nn.Module):
                 cat_elements = [up_element]
                 for k in range(j + 1):
                     cat_elements.append(x[i - k][j - k])
-                
+
                 # up convolution after concat
                 x[i + 1][j + 1] = self.up_conv_modules[i][j](torch.cat(cat_elements, dim=1))
 
         output = self.output_conv(x[self.number_unet][self.number_unet])
         output = self.sigmoid(output)
-        return output        
-                
+        return output
+
     def get_conv_block(self, in_channels, out_channels, have_pool=True):
         if not have_pool:
             stride = 1
         else:
             stride = 2
-            
+
         return nn.Sequential(
             self.conv_layer(in_channels, out_channels, stride = stride, **self.conv_kwargs),
             self.norm_layer(out_channels, **self.norm_kwargs),
@@ -116,7 +114,7 @@ class EncoderUNetPlusPlus3D(nn.Module):
             self.norm_layer(out_channels, **self.norm_kwargs),
             self.activate_layer(**self.activate_kwargs),
         )
-    
+
     def get_up_block(self, in_channels, out_channels, in_channels_conv):
         up = self.transpconv_layer(in_channels, out_channels, **self.transpconv_kwargs)
         up_conv = nn.Sequential(
@@ -143,7 +141,7 @@ if __name__ == "__main__":
         },
         "norm_kwargs": {
             "eps": 1e-05,
-            "affine": True    
+            "affine": True
         },
         "activate_kwargs": {
             "negative_slope": 0.01,

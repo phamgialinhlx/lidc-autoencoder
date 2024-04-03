@@ -31,12 +31,12 @@ def vanilla_d_loss(logits_real, logits_fake):
 
 class MultiheadVQGAN(LightningModule):
     def __init__(self, 
-            embedding_dim: int = 256, 
-            n_codes: int = 2048, 
+            embedding_dim: int = 256,
+            n_codes: int = 2048,
             n_hiddens: int = 240,
             lr: float = 3e-4,
             image_channels: int = 1,
-            downsample: Any =[4, 4, 4],
+            downsample: Any = [4, 4, 4],
             disc_channels: int = 64,
             disc_layers: int = 3,
             discriminator_iter_start: int = 50000,
@@ -57,8 +57,7 @@ class MultiheadVQGAN(LightningModule):
             segmentation_criterion = None,
             classifier_head = None,
             clasification_criterion = None,
-            use_same_optimizer = False,
-        ):
+            use_same_optimizer = False,):
 
         super().__init__()
         self.save_hyperparameters()
@@ -69,37 +68,37 @@ class MultiheadVQGAN(LightningModule):
         self.discriminator_iter_start = discriminator_iter_start
 
         self.encoder = Encoder(
-            n_hiddens, 
+            n_hiddens,
             downsample,
-            image_channels, 
-            norm_type, 
+            image_channels,
+            norm_type,
             padding_type,
             num_groups,
         )
         self.decoder = Decoder(
-            n_hiddens, 
-            downsample, 
-            image_channels, 
-            norm_type, 
+            n_hiddens,
+            downsample,
+            image_channels,
+            norm_type,
             num_groups
         )
         self.enc_out_ch = self.encoder.out_channels
         self.pre_vq_conv = SamePadConv3d(
-            self.enc_out_ch, 
-            embedding_dim, 
-            1, 
+            self.enc_out_ch,
+            embedding_dim,
+            1,
             padding_type=padding_type
         )
         self.post_vq_conv = SamePadConv3d(
-            embedding_dim, 
-            self.enc_out_ch, 
+            embedding_dim,
+            self.enc_out_ch,
             1
         )
 
         self.codebook = Codebook(
-            n_codes, 
+            n_codes,
             embedding_dim,
-            no_random_restart=no_random_restart, 
+            no_random_restart=no_random_restart,
             restart_thres=restart_thres)
 
         self.gan_feat_weight = gan_feat_weight
@@ -131,14 +130,13 @@ class MultiheadVQGAN(LightningModule):
         self.classifier_head = classifier_head
         self.clasification_criterion = clasification_criterion
         self.bn = nn.BatchNorm3d(self.enc_out_ch)
-        
+
         self.use_same_optimizer = use_same_optimizer
-        
+
         self.use_ema = use_ema
         if self.use_ema:
             self.model_ema = LitEma(self)
             print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
-
 
     @contextmanager
     def ema_scope(self, context=None):
@@ -242,7 +240,7 @@ class MultiheadVQGAN(LightningModule):
                 x_recon)
             g_image_loss = -torch.mean(logits_image_fake)
             g_video_loss = -torch.mean(logits_video_fake)
-            g_loss = self.image_gan_weight*g_image_loss + self.video_gan_weight*g_video_loss
+            g_loss = self.image_gan_weight * g_image_loss + self.video_gan_weight * g_video_loss
             disc_factor = adopt_weight(
                 self.global_step, threshold=self.discriminator_iter_start)
             aeloss = disc_factor * g_loss
@@ -254,14 +252,14 @@ class MultiheadVQGAN(LightningModule):
             if self.image_gan_weight > 0:
                 logits_image_real, pred_image_real = self.image_discriminator(
                     frames)
-                for i in range(len(pred_image_fake)-1):
+                for i in range(len(pred_image_fake) - 1):
                     image_gan_feat_loss += feat_weights * \
                         F.l1_loss(pred_image_fake[i], pred_image_real[i].detach(
                         )) * (self.image_gan_weight > 0)
             if self.video_gan_weight > 0:
                 logits_video_real, pred_video_real = self.video_discriminator(
                     x)
-                for i in range(len(pred_video_fake)-1):
+                for i in range(len(pred_video_fake) - 1):
                     video_gan_feat_loss += feat_weights * \
                         F.l1_loss(pred_video_fake[i], pred_video_real[i].detach(
                         )) * (self.video_gan_weight > 0)
@@ -339,7 +337,7 @@ class MultiheadVQGAN(LightningModule):
             opt_ds = opt_list[2]
         else:
             if len(opt_list) == 3:
-                if self.segmentation_decoder != None:
+                if self.segmentation_decoder is not None:
                     opt_seg = opt_list[2]
                 else:
                     opt_cls = opt_list[2]
@@ -372,60 +370,65 @@ class MultiheadVQGAN(LightningModule):
             self.log("train/ds_loss", ds_loss, prog_bar=True,
                      logger=True, on_step=True, on_epoch=True)
         else:
-            if self.segmentation_decoder != None:
+            if self.segmentation_decoder is not None:
                 opt_seg.zero_grad()
                 seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
                 self.manual_backward(seg_loss)
                 opt_seg.step()
-            
-            if self.classifier_head != None:
+            if self.classifier_head is not None:
                 opt_cls.zero_grad()
                 cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
                 self.manual_backward(cls_loss)
                 opt_cls.step()
-        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
-                "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
-        
+
+        if self.classifier_head is not None and self.segmentation_decoder is not None:
+            return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
+                    "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
+        elif self.classifier_head is None and self.segmentation_decoder is not None:
+            return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
+
     def validation_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
         if self.use_ema:
             with self.ema_scope():
                 recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-                if self.segmentation_decoder != None:
+                if self.segmentation_decoder is not None:
                     seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-                if self.classifier_head != None:
+                if self.classifier_head is not None:
                     cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
         else:
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-            if self.segmentation_decoder != None:
+            if self.segmentation_decoder is not None:
                 seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-            if self.classifier_head != None:
+            if self.classifier_head is not None:
                 cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
 
         self.log('val/recon_loss', recon_loss, prog_bar=True)
         self.log('val/perceptual_loss', perceptual_loss, prog_bar=True)
         self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)
         self.log('val/commitment_loss', vq_output['commitment_loss'], prog_bar=True)
-        
-        if self.segmentation_decoder != None and self.classifier_head != None:
+
+        if self.segmentation_decoder is not None and self.classifier_head is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
                     "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
+        elif self.classifier_head is None and self.segmentation_decoder is not None:
+            return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
     def test_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
-        
+
         if self.use_ema:
             with self.ema_scope():
                 recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-                if self.segmentation_decoder != None:
+                if self.segmentation_decoder is not None:
                     seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-                if self.classifier_head != None:
+                if self.classifier_head is not None:
                     cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
         else:
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-            if self.segmentation_decoder != None:
+            if self.segmentation_decoder is not None:
                 seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-            if self.classifier_head != None:
+            if self.classifier_head is not None:
                 cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
 
         self.log('test/recon_loss', recon_loss, prog_bar=True)
@@ -433,9 +436,11 @@ class MultiheadVQGAN(LightningModule):
         self.log('test/perplexity', vq_output['perplexity'], prog_bar=True)
         self.log('test/commitment_loss',
                  vq_output['commitment_loss'], prog_bar=True)
-        return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
-                "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
-
+        if self.segmentation_decoder is not None and self.classifier_head is not None:
+            return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
+                    "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
+        elif self.classifier_head is None and self.segmentation_decoder is not None:
+            return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
     def configure_optimizers(self):
         lr = self.lr
@@ -456,13 +461,13 @@ class MultiheadVQGAN(LightningModule):
                                       lr=0.001, betas=(0.5, 0.9))
             opt_list.append(opt_ds)
         else:
-            if self.segmentation_decoder != None:
+            if self.segmentation_decoder is not None:
                 opt_seg = torch.optim.Adam(list(self.segmentation_decoder.parameters()) +
                                         list(self.encoder.parameters()), lr=0.01, betas=(0.5, 0.9))
                 opt_list.append(opt_seg)
-            if self.classifier_head != None:
+            if self.classifier_head is not None:
                 opt_cls = torch.optim.Adam(list(self.classifier_head.parameters()) +
-                                            list(self.encoder.parameters()), lr=lr, betas=(0.5, 0.9))
+                                        list(self.encoder.parameters()), lr=lr, betas=(0.5, 0.9))
                 opt_list.append(opt_cls)
         
         return (opt_list, [])
@@ -477,17 +482,17 @@ class MultiheadVQGAN(LightningModule):
                 frames, frames_rec, _, _ = self(x, log_image=True)
         else:
             frames, frames_rec, _, _ = self(x, log_image=True)
-        
+
         log["inputs"] = frames
         log["reconstructions"] = frames_rec
-        #log['mean_org'] = batch['mean_org']
-        #log['std_org'] = batch['std_org']
+        # log['mean_org'] = batch['mean_org']
+        # log['std_org'] = batch['std_org']
         return log
 
     def log_videos(self, batch, **kwargs):
         log = dict()
         x = batch['data']
-        
+
         if self.use_ema:
             with self.ema_scope():
                 _, _, x, x_rec = self(x, log_image=True)
@@ -496,8 +501,8 @@ class MultiheadVQGAN(LightningModule):
 
         log["inputs"] = x
         log["reconstructions"] = x_rec
-        #log['mean_org'] = batch['mean_org']
-        #log['std_org'] = batch['std_org']
+        # log['mean_org'] = batch['mean_org']
+        # log['std_org'] = batch['std_org']
         return log
 
 
@@ -515,7 +520,8 @@ def main(cfg: DictConfig):
     model: MultiheadVQGAN = hydra.utils.instantiate(cfg).to('cuda')
     input_tensor = torch.randn(1, 1, 128, 128, 128).to('cuda')
     encoded_output = model.encoder(input_tensor)
-    from IPython import embed; embed()
+    from IPython import embed
+    embed()
     print(encoded_output.shape)
     print('Encoder out channels:', model.encoder.out_channels)
 

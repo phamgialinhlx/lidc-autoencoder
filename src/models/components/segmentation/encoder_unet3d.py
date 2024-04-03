@@ -11,11 +11,10 @@ class EncoderUNet3D(nn.Module):
     def __init__(self,
             n_channels=1,
             n_classes=2,
-            base_channel = 16, 
+            base_channel = 16,
             width_multiplier=1, \
             trilinear=True, \
-            use_ds_conv=False
-        ):
+            use_ds_conv=False):
         """A simple 3D Unet, adapted from a 2D Unet from https://github.com/milesial/Pytorch-UNet/tree/master/unet
         Arguments:
           n_channels = number of input channels; 3 for RGB, 1 for grayscale input
@@ -29,10 +28,10 @@ class EncoderUNet3D(nn.Module):
                   VRAM is saved by using ds_conv, and yet performance suffers."""
         super(EncoderUNet3D, self).__init__()
         # _channels = (16, 32, 64, 128, 256, 512)
-        _channels = (base_channel, base_channel*2, base_channel*4, base_channel*8, base_channel*16)
+        _channels = (base_channel, base_channel * 2, base_channel * 4, base_channel * 8, base_channel * 16)
         self.n_channels = n_channels
         self.n_classes = n_classes
-        self.channels = [int(c*width_multiplier) for c in _channels]
+        self.channels = [int(c * width_multiplier) for c in _channels]
         self.trilinear = trilinear
         self.convtype = DepthwiseSeparableConv3d if use_ds_conv else nn.Conv3d
 
@@ -47,6 +46,10 @@ class EncoderUNet3D(nn.Module):
         self.up3 = Up(self.channels[2], self.channels[1] // factor, trilinear)
         self.up4 = Up(self.channels[1], self.channels[0], trilinear)
         self.outc = OutConv(self.channels[0], n_classes)
+        if n_classes == 1:
+            self.last_conv = nn.Sigmoid()
+        elif n_classes == 2:
+            self.last_conv = nn.Softmax(dim=1)
 
     def forward(self, encoder, x):
         x1 = encoder.conv_first(x)
@@ -64,7 +67,7 @@ class EncoderUNet3D(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return F.softmax(logits, dim=1)
+        return self.last_conv(logits)
 
 
 class DoubleConv(nn.Module):
@@ -115,7 +118,6 @@ class Up(nn.Module):
             self.up = nn.ConvTranspose3d(in_channels, in_channels // 2, kernel_size=2, stride=2)
             self.conv = DoubleConv(in_channels, out_channels)
 
-
     def forward(self, x1, x2):
         x1 = self.up(x1)
         # input is CHW
@@ -156,7 +158,7 @@ if __name__ == "__main__":
     n_channels = 1  # Assuming grayscale input
     n_classes = 1   # Number of output classes
     unet_model = EncoderUNet3D(
-        n_channels, 
+        n_channels,
         n_classes
     )
 

@@ -36,10 +36,10 @@ class BasicBlock3D(nn.Module):
         self.bn2 = nn.BatchNorm3d(planes)
 
         self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
+        if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
-                SamePadConv3d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, padding_type='replicate', bias=False),
-                nn.BatchNorm3d(self.expansion*planes)
+                SamePadConv3d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, padding_type='replicate', bias=False),
+                nn.BatchNorm3d(self.expansion * planes)
             )
 
     def forward(self, x):
@@ -50,7 +50,7 @@ class BasicBlock3D(nn.Module):
         return out
 
 class ResNet3D(nn.Module):
-    def __init__(self, block=BasicBlock3D, num_blocks=[2,2,2,2], num_channels=8, num_classes=10):
+    def __init__(self, block=BasicBlock3D, num_blocks=[2, 2, 2, 2], num_channels=8, num_classes=10):
         super(ResNet3D, self).__init__()
         self.in_planes = 64
 
@@ -60,10 +60,10 @@ class ResNet3D(nn.Module):
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512*block.expansion, num_classes)
+        self.linear = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1]*(num_blocks-1)
+        strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
             layers.append(block(self.in_planes, planes, stride))
@@ -82,17 +82,17 @@ class ResNet3D(nn.Module):
         return out
 
 def ResNet183D():
-    return ResNet3D(BasicBlock3D, [2,2,2,2], num_classes=2)
+    return ResNet3D(BasicBlock3D, [2, 2, 2, 2], num_classes=2)
 
 
 def ResNet503D():
-    return ResNet3D(BasicBlock3D, [3,4,6,3], num_classes=2)
+    return ResNet3D(BasicBlock3D, [3, 4, 6, 3], num_classes=2)
 
 def ResNet1013D():
-    return ResNet3D(BasicBlock3D, [3,4,23,3], num_classes=2)
+    return ResNet3D(BasicBlock3D, [3, 4, 23, 3], num_classes=2)
 
 def ResNet1523D():
-    return ResNet3D(BasicBlock3D, [3,8,36,3], num_classes=2)
+    return ResNet3D(BasicBlock3D, [3, 8, 36, 3], num_classes=2)
 
 # Testing the network
 if __name__ == "__main__":
