@@ -17,26 +17,24 @@ from src.models.diffusion_module import load_autoencoder
 import torch.nn.functional as F
 
 class ClassificationModule(LightningModule):
-    def __init__(self, 
-                net, 
+    def __init__(self,
+                net,
                 criterion,
                 autoencoder_ckpt_path: str,
-                optimizer: torch.optim.Optimizer, 
-                scheduler: torch.optim.lr_scheduler, 
-                compile: bool, 
+                optimizer: torch.optim.Optimizer,
+                scheduler: torch.optim.lr_scheduler,
+                compile: bool,
                 num_classes: int = 2,
                 use_ema: bool = True,
-                *args: Any, 
-                **kwargs: Any
-        ) -> None:
+                *args: Any,
+                **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.save_hyperparameters(logger=False)
-        
         self.autoencoder = load_autoencoder(autoencoder_ckpt_path, disable_decoder=True, eval=False)
-        self.net = net        
-        
+        self.net = net
+
         # loss function
-        self.criterion = criterion 
+        self.criterion = criterion
 
         self.use_ema = use_ema
         if self.use_ema:
@@ -60,8 +58,8 @@ class ClassificationModule(LightningModule):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if isinstance(self.autoencoder, VQGAN):
-                # x = self.autoencoder.encode(
-                    # x, quantize=False, include_embeddings=True)
+            # x = self.autoencoder.encode(
+            #   x, quantize=False, include_embeddings=True)
             x = self.autoencoder.encoder(x)
         else:
             x = self.autoencoder.encode(x).sample()
@@ -78,7 +76,7 @@ class ClassificationModule(LightningModule):
     def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         loss, preds, y = self.model_step(batch)
         return {"cls_loss": loss, "cls_preds": preds, "cls_targets": y, "loss": loss}
-        
+
     def on_train_epoch_end(self) -> None:
         "Lightning hook that is called when a training epoch ends."
         pass
@@ -95,7 +93,7 @@ class ClassificationModule(LightningModule):
                 loss, preds, targets = self.model_step(batch)
         else:
             loss, preds, targets = self.model_step(batch)
-        
+
         return {"cls_loss": loss, "cls_preds": preds, "cls_targets": targets}
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
@@ -111,7 +109,7 @@ class ClassificationModule(LightningModule):
                 loss, preds, targets = self.model_step(batch)
         else:
             loss, preds, targets = self.model_step(batch)
-        
+
         return {"cls_loss": loss, "cls_preds": preds, "cls_targets": targets}
 
     def on_test_epoch_end(self) -> None:
@@ -161,10 +159,11 @@ def main(cfg: DictConfig):
     # shutil.rmtree('outputs')
     print(cfg)
     cfg.autoencoder_ckpt_path = "./outputs/vq_gan_3d_low_compression/lung-thesis/2aglgm52/checkpoints/epoch=111-step=179200.ckpt"
-    from IPython import embed; embed()
+    from IPython import embed
+    embed()
     model = hydra.utils.instantiate(cfg)
     model.autoencoder = load_autoencoder(cfg.autoencoder_ckpt_path, disable_decoder=True, map_location='cpu')
-    input_tensor = torch.randn(1, 1, 128, 128, 128) #.to('cuda')
+    input_tensor = torch.randn(1, 1, 128, 128, 128)
     output = model(input_tensor)
     print(output.shape)
     # encoded_output = model.encoder(input_tensor)

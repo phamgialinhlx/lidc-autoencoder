@@ -16,22 +16,22 @@ class SegmentationMetrics(Callback):
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
         self.test_loss = MeanMetric()
-        
+
         # self.val_metric_best_1 = MaxMetric()
         # self.val_metric_best_2 = MaxMetric()
         self.val_metric_best_1 = float("-inf")
         self.val_metric_best_2 = float("-inf")
         self.device = device
-        
+
     def on_fit_start(self, trainer, pl_module):
         self.train_jaccard = self.train_jaccard.to(self.device)
         self.val_jaccard = self.val_jaccard.to(self.device)
         self.test_jaccard = self.test_jaccard.to(self.device)
-        
+
         self.train_dice = self.train_dice.to(self.device)
         self.val_dice = self.val_dice.to(self.device)
         self.test_dice = self.test_dice.to(self.device)
-        
+
         self.train_loss = self.train_loss.to(self.device)
         self.val_loss = self.val_loss.to(self.device)
         self.test_loss = self.test_loss.to(self.device)
@@ -44,7 +44,7 @@ class SegmentationMetrics(Callback):
     #     self.val_dice.reset()
         # self.val_metric_best_1.reset()
         # self.val_metric_best_2.reset()
-            
+
     def on_train_epoch_start(self, trainer, pl_module):
         self.train_jaccard.reset()
         self.train_dice.reset()

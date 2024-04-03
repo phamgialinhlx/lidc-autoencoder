@@ -100,4 +100,3 @@ if __name__ == "__main__":
     x = torch.randn(20, 8, 32, 32, 32)
     y = net(x)
     print(y.size())
-

@@ -30,7 +30,7 @@ def vanilla_d_loss(logits_real, logits_fake):
     return d_loss
 
 class MultiheadVQGAN(LightningModule):
-    def __init__(self, 
+    def __init__(self,
             embedding_dim: int = 256,
             n_codes: int = 2048,
             n_hiddens: int = 240,
@@ -300,8 +300,7 @@ class MultiheadVQGAN(LightningModule):
             disc_factor = adopt_weight(
                 self.global_step, threshold=self.discriminator_iter_start)
             discloss = disc_factor * \
-                (self.image_gan_weight * d_image_loss +
-                 self.video_gan_weight * d_video_loss)
+                (self.image_gan_weight * d_image_loss + self.video_gan_weight * d_video_loss)
 
             self.log("train/logits_image_real", logits_image_real.mean().detach(),
                      logger=True, on_step=True, on_epoch=True)
@@ -457,7 +456,7 @@ class MultiheadVQGAN(LightningModule):
         if self.use_same_optimizer:
             opt_ds = torch.optim.Adam(list(self.segmentation_decoder.parameters()) +
                                       list(self.encoder.parameters()) +
-                                      list(self.classifier_head.parameters()), 
+                                      list(self.classifier_head.parameters()),
                                       lr=0.001, betas=(0.5, 0.9))
             opt_list.append(opt_ds)
         else:

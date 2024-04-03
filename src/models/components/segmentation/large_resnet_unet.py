@@ -59,14 +59,13 @@ class LargeResNetUNet(torch.nn.Module):
             rn50_feature_extractor = torch.nn.Sequential(*list(rn50.children())[:-2])
             self.rn = rn50_feature_extractor
             print("arch input is not valid. Using ResNet50 as default.")
-            
+
         self.sfs = Resnet(self.rn)
         self.up1 = UNet_Up_Block(2048, 1024, 2048)
         self.up2 = UNet_Up_Block(2048, 512, 2048)
         self.up3 = UNet_Up_Block(2048, 256, 1024)
         self.up4 = UNet_Up_Block(1024, 64, 1024)
         self.up5 = torch.nn.ConvTranspose2d(1024, 1, 2, stride=2)
-        
 
     def forward(self, x):
         print(x.shape)
