@@ -48,8 +48,8 @@ class EncoderUNet3D(nn.Module):
         self.outc = OutConv(self.channels[0], n_classes)
         if n_classes == 1:
             self.last_conv = nn.Sigmoid()
-        elif n_classes == 2:
-            self.last_conv = nn.Softmax(dim=1)
+        # elif n_classes == 2:
+        #   self.last_conv = nn.Softmax(dim=1)
 
     def forward(self, encoder, x):
         x1 = encoder.conv_first(x)
@@ -67,7 +67,10 @@ class EncoderUNet3D(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return self.last_conv(logits)
+        if self.n_classes == 1:
+            return self.last_conv(logits)
+        else:
+            return logits
 
 
 class DoubleConv(nn.Module):

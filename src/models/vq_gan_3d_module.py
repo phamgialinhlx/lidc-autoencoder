@@ -23,18 +23,18 @@ def hinge_d_loss(logits_real, logits_fake):
 
 def vanilla_d_loss(logits_real, logits_fake):
     d_loss = 0.5 * (
-        torch.mean(torch.nn.functional.softplus(-logits_real)) +
+        torch.mean(torch.nn.functional.softplus(-logits_real)) + \
         torch.mean(torch.nn.functional.softplus(logits_fake)))
     return d_loss
 
 class VQGAN(LightningModule):
-    def __init__(self, 
-            embedding_dim: int = 256, 
-            n_codes: int = 2048, 
+    def __init__(self,
+            embedding_dim: int = 256,
+            n_codes: int = 2048,
             n_hiddens: int = 240,
             lr: float = 3e-4,
             image_channels: int = 1,
-            downsample: Any =[4, 4, 4],
+            downsample: Any = [4, 4, 4],
             disc_channels: int = 64,
             disc_layers: int = 3,
             discriminator_iter_start: int = 50000,
@@ -50,8 +50,7 @@ class VQGAN(LightningModule):
             norm_type: str = "group",
             padding_type: str = "replicate",
             num_groups: int = 32,
-            use_ema: bool = True
-        ):
+            use_ema: bool = True):
 
         super().__init__()
         self.save_hyperparameters()
@@ -60,39 +59,39 @@ class VQGAN(LightningModule):
         self.n_codes = n_codes
         self.lr = lr
         self.discriminator_iter_start = discriminator_iter_start
-        
+
         self.encoder = Encoder(
-            n_hiddens, 
+            n_hiddens,
             downsample,
-            image_channels, 
-            norm_type, 
+            image_channels,
+            norm_type,
             padding_type,
             num_groups,
         )
         self.decoder = Decoder(
-            n_hiddens, 
-            downsample, 
-            image_channels, 
-            norm_type, 
+            n_hiddens,
+            downsample,
+            image_channels,
+            norm_type,
             num_groups
         )
         self.enc_out_ch = self.encoder.out_channels
         self.pre_vq_conv = SamePadConv3d(
-            self.enc_out_ch, 
-            embedding_dim, 
-            1, 
+            self.enc_out_ch,
+            embedding_dim,
+            1,
             padding_type=padding_type
         )
         self.post_vq_conv = SamePadConv3d(
-            embedding_dim, 
-            self.enc_out_ch, 
+            embedding_dim,
+            self.enc_out_ch,
             1
         )
 
         self.codebook = Codebook(
-            n_codes, 
+            n_codes,
             embedding_dim,
-            no_random_restart=no_random_restart, 
+            no_random_restart=no_random_restart,
             restart_thres=restart_thres)
 
         self.gan_feat_weight = gan_feat_weight
@@ -109,7 +108,7 @@ class VQGAN(LightningModule):
         else:
             raise NotImplementedError(
                 f"Discriminator loss type {disc_loss_type} not implemented")
-        
+
         self.perceptual_model = LPIPS().eval()
 
         self.image_gan_weight = image_gan_weight
@@ -191,7 +190,7 @@ class VQGAN(LightningModule):
                 x_recon)
             g_image_loss = -torch.mean(logits_image_fake)
             g_video_loss = -torch.mean(logits_video_fake)
-            g_loss = self.image_gan_weight*g_image_loss + self.video_gan_weight*g_video_loss
+            g_loss = self.image_gan_weight * g_image_loss + self.video_gan_weight * g_video_loss
             disc_factor = adopt_weight(
                 self.global_step, threshold=self.discriminator_iter_start)
             aeloss = disc_factor * g_loss
@@ -203,14 +202,14 @@ class VQGAN(LightningModule):
             if self.image_gan_weight > 0:
                 logits_image_real, pred_image_real = self.image_discriminator(
                     frames)
-                for i in range(len(pred_image_fake)-1):
+                for i in range(len(pred_image_fake) - 1):
                     image_gan_feat_loss += feat_weights * \
                         F.l1_loss(pred_image_fake[i], pred_image_real[i].detach(
                         )) * (self.image_gan_weight > 0)
             if self.video_gan_weight > 0:
                 logits_video_real, pred_video_real = self.video_discriminator(
                     x)
-                for i in range(len(pred_video_fake)-1):
+                for i in range(len(pred_video_fake) - 1):
                     video_gan_feat_loss += feat_weights * \
                         F.l1_loss(pred_video_fake[i], pred_video_real[i].detach(
                         )) * (self.video_gan_weight > 0)
@@ -251,7 +250,7 @@ class VQGAN(LightningModule):
             disc_factor = adopt_weight(
                 self.global_step, threshold=self.discriminator_iter_start)
             discloss = disc_factor * \
-                (self.image_gan_weight * d_image_loss +
+                (self.image_gan_weight * d_image_loss + \
                  self.video_gan_weight * d_video_loss)
 
             self.log("train/logits_image_real", logits_image_real.mean().detach(),
@@ -273,7 +272,7 @@ class VQGAN(LightningModule):
         perceptual_loss = self.perceptual_model(
             frames, frames_recon) * self.perceptual_weight
         return recon_loss, x_recon, vq_output, perceptual_loss
-    
+
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
             self.model_ema(self)
@@ -296,7 +295,6 @@ class VQGAN(LightningModule):
         discloss = self.forward(x, optimizer_idx=1)
         self.manual_backward(discloss)
         opt_disc.step()
-        
 
     def validation_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
@@ -305,7 +303,6 @@ class VQGAN(LightningModule):
                 recon_loss, _, vq_output, perceptual_loss = self.forward(x)
         else:
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-        
 
         self.log('val/recon_loss', recon_loss, prog_bar=True)
         self.log('val/perceptual_loss', perceptual_loss, prog_bar=True)
@@ -315,13 +312,12 @@ class VQGAN(LightningModule):
 
     def test_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
-        
+
         if self.use_ema:
             with self.ema_scope():
                 recon_loss, _, vq_output, perceptual_loss = self.forward(x)
         else:
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-        
 
         self.log('test/recon_loss', recon_loss, prog_bar=True)
         self.log('test/perceptual_loss', perceptual_loss, prog_bar=True)
@@ -329,16 +325,15 @@ class VQGAN(LightningModule):
         self.log('test/commitment_loss',
                  vq_output['commitment_loss'], prog_bar=True)
 
-
     def configure_optimizers(self):
         lr = self.lr
-        opt_ae = torch.optim.Adam(list(self.encoder.parameters()) +
-                                  list(self.decoder.parameters()) +
-                                  list(self.pre_vq_conv.parameters()) +
-                                  list(self.post_vq_conv.parameters()) +
+        opt_ae = torch.optim.Adam(list(self.encoder.parameters()) + \
+                                  list(self.decoder.parameters()) + \
+                                  list(self.pre_vq_conv.parameters()) + \
+                                  list(self.post_vq_conv.parameters()) + \
                                   list(self.codebook.parameters()),
                                   lr=lr, betas=(0.5, 0.9))
-        opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters()) +
+        opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters()) + \
                                     list(self.video_discriminator.parameters()),
                                     lr=lr, betas=(0.5, 0.9))
         return [opt_ae, opt_disc], []
@@ -347,23 +342,23 @@ class VQGAN(LightningModule):
         log = dict()
         x = batch['data']
         x = x.to(self.device)
-        
+
         if self.use_ema:
             with self.ema_scope():
                 frames, frames_rec, _, _ = self(x, log_image=True)
         else:
             frames, frames_rec, _, _ = self(x, log_image=True)
-        
+
         log["inputs"] = frames
         log["reconstructions"] = frames_rec
-        #log['mean_org'] = batch['mean_org']
-        #log['std_org'] = batch['std_org']
+        # log['mean_org'] = batch['mean_org']
+        # log['std_org'] = batch['std_org']
         return log
 
     def log_videos(self, batch, **kwargs):
         log = dict()
         x = batch['data']
-        
+
         if self.use_ema:
             with self.ema_scope():
                 _, _, x, x_rec = self(x, log_image=True)
@@ -372,8 +367,8 @@ class VQGAN(LightningModule):
 
         log["inputs"] = x
         log["reconstructions"] = x_rec
-        #log['mean_org'] = batch['mean_org']
-        #log['std_org'] = batch['std_org']
+        # log['mean_org'] = batch['mean_org']
+        # log['std_org'] = batch['std_org']
         return log
 
 
@@ -386,7 +381,8 @@ def main(cfg: DictConfig):
     print(cfg)
     # cfg.embedding_dim = 16
     cfg.n_hiddens = 16
-    from IPython import embed; embed()
+    from IPython import embed
+    embed()
     model: VQGAN = hydra.utils.instantiate(cfg).to('cuda')
     input_tensor = torch.randn(1, 1, 128, 128, 128).to('cuda')
     encoded_output = model.encoder(input_tensor)

@@ -2,13 +2,13 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import numpy as np
-import math 
+import math
 
 from .codebook import Codebook
 from .lpips import LPIPS
 
 def silu(x):
-    return x*torch.sigmoid(x)
+    return x * torch.sigmoid(x)
 
 
 class SiLU(nn.Module):
@@ -64,7 +64,7 @@ class Encoder(nn.Module):
         for i in range(max_ds):
             block = nn.Module()
             in_channels = n_hiddens * 2 ** i
-            out_channels = n_hiddens * 2 ** (i+1)
+            out_channels = n_hiddens * 2 ** (i + 1)
             stride = tuple([2 if d > 0 else 1 for d in n_times_downsample])
             block.down = SamePadConv3d(
                 in_channels, out_channels, 4, stride=stride, padding_type=padding_type)
@@ -96,7 +96,7 @@ class Decoder(nn.Module):
         n_times_upsample = np.array([int(math.log2(d)) for d in upsample])
         max_us = n_times_upsample.max()
 
-        in_channels = n_hiddens*2**max_us
+        in_channels = n_hiddens * 2 ** max_us
         self.final_block = nn.Sequential(
             Normalize(in_channels, norm_type, num_groups=num_groups),
             SiLU()
@@ -105,8 +105,8 @@ class Decoder(nn.Module):
         self.conv_blocks = nn.ModuleList()
         for i in range(max_us):
             block = nn.Module()
-            in_channels = in_channels if i == 0 else n_hiddens*2**(max_us-i+1)
-            out_channels = n_hiddens*2**(max_us-i)
+            in_channels = in_channels if i == 0 else n_hiddens * 2 ** (max_us - i + 1)
+            out_channels = n_hiddens * 2 ** (max_us - i)
             us = tuple([2 if d > 0 else 1 for d in n_times_upsample])
             block.up = SamePadConvTranspose3d(
                 in_channels, out_channels, 4, stride=us)
@@ -161,7 +161,7 @@ class ResBlock(nn.Module):
         if self.in_channels != self.out_channels:
             x = self.conv_shortcut(x)
 
-        return x+h
+        return x + h
 
 
 # Does not support dilation
@@ -221,7 +221,7 @@ class NLayerDiscriminator(nn.Module):
         self.n_layers = n_layers
 
         kw = 4
-        padw = int(np.ceil((kw-1.0)/2))
+        padw = int(np.ceil((kw - 1.0) / 2))
         sequence = [[nn.Conv2d(input_nc, ndf, kernel_size=kw,
                                stride=2, padding=padw), nn.LeakyReLU(0.2, True)]]
 
@@ -250,7 +250,7 @@ class NLayerDiscriminator(nn.Module):
 
         if getIntermFeat:
             for n in range(len(sequence)):
-                setattr(self, 'model'+str(n), nn.Sequential(*sequence[n]))
+                setattr(self, 'model' + str(n), nn.Sequential(*sequence[n]))
         else:
             sequence_stream = []
             for n in range(len(sequence)):
@@ -260,8 +260,8 @@ class NLayerDiscriminator(nn.Module):
     def forward(self, input):
         if self.getIntermFeat:
             res = [input]
-            for n in range(self.n_layers+2):
-                model = getattr(self, 'model'+str(n))
+            for n in range(self.n_layers + 2):
+                model = getattr(self, 'model' + str(n))
                 res.append(model(res[-1]))
             return res[-1], res[1:]
         else:
@@ -275,7 +275,7 @@ class NLayerDiscriminator3D(nn.Module):
         self.n_layers = n_layers
 
         kw = 4
-        padw = int(np.ceil((kw-1.0)/2))
+        padw = int(np.ceil((kw - 1.0) / 2))
         sequence = [[nn.Conv3d(input_nc, ndf, kernel_size=kw,
                                stride=2, padding=padw), nn.LeakyReLU(0.2, True)]]
 
@@ -304,7 +304,7 @@ class NLayerDiscriminator3D(nn.Module):
 
         if getIntermFeat:
             for n in range(len(sequence)):
-                setattr(self, 'model'+str(n), nn.Sequential(*sequence[n]))
+                setattr(self, 'model' + str(n), nn.Sequential(*sequence[n]))
         else:
             sequence_stream = []
             for n in range(len(sequence)):
@@ -314,10 +314,9 @@ class NLayerDiscriminator3D(nn.Module):
     def forward(self, input):
         if self.getIntermFeat:
             res = [input]
-            for n in range(self.n_layers+2):
-                model = getattr(self, 'model'+str(n))
+            for n in range(self.n_layers + 2):
+                model = getattr(self, 'model' + str(n))
                 res.append(model(res[-1]))
             return res[-1], res[1:]
         else:
             return self.model(input), _
-

@@ -36,25 +36,27 @@ class MaskLogger(Callback):
                 'video',
                 pl_module.global_step,
                 pl_module.current_epoch,
-                )
+            )
             path = os.path.join(root, filename)
             os.makedirs(os.path.split(path)[0], exist_ok=True)
 
             x = self.batch['data']
-            
+
             y = self.batch['mask'].int().squeeze(0)
             label = self.batch['label']
             if (hasattr(pl_module, "forward_segmentation")):
                 _, pred, _ = pl_module.forward_segmentation(self.batch)
             else:
                 pred = pl_module.forward(x)
-            pred = torch.argmax(pred, dim=1).unsqueeze(0)
+            # pred = torch.argmax(pred, dim=1).unsqueeze(0)
             # pred = pred >= 0.5
+            # from IPython import embed
+            # embed()
             pred = pred.squeeze(0)
             # pred = torch.argmax(pred, dim=1)
             x = (x + 1.0) * 127.5  # std + mean
             torch.clamp(x, 0, 255)
-            
+
             x = x.squeeze(0)
             x = x.permute(1, 2, 3, 0)
             x = x.cpu().numpy()
@@ -69,17 +71,23 @@ class MaskLogger(Callback):
             t, h, w, c = x.shape
             # frame = torch.concat((x[0], y[0], pred[0]), dim=1)  # Concatenate images horizontally
             # frame = np.concatenate((x[0], y[0], pred[0]), axis=1)  # Concatenate images horizontally
+            border_width = 5  # Width of the border in pixels
 
             for i in range(t):
-                # Assuming x, y, and pred are images represented as numpy arrays
-                frame = np.concatenate((x[i], y[i], pred[i]), axis=1)  # Concatenate images horizontally
+                # Add a black border around each image
+                x_padded = np.pad(x[i], ((border_width, border_width), (border_width, border_width), (0, 0)), mode='constant', constant_values=255)
+                y_padded = np.pad(y[i], ((border_width, border_width), (border_width, border_width), (0, 0)), mode='constant', constant_values=255)
+                pred_padded = np.pad(pred[i], ((border_width, border_width), (border_width, border_width), (0, 0)), mode='constant', constant_values=255)
+
+                # Now concatenate the images with borders
+                frame = np.concatenate((x_padded, y_padded, pred_padded), axis=1)  # Concatenate images horizontally with borders
                 frames.append(frame.astype(np.uint8))
 
             imageio.mimsave(path, frames, fps=6)
- 
+
             if is_train:
                 pl_module.train()
-            
+
             pl_module.logger.experiment.log(
                 {
                     "video_gt_pred": [
@@ -128,4 +136,3 @@ class MaskLogger(Callback):
 
     def on_validation_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         self.log_vid(pl_module, split="train")
-    

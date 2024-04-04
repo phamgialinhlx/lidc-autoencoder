@@ -1,6 +1,7 @@
 import torch
 from lightning.pytorch.callbacks import Callback
 from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
+from torchmetrics.functional import dice
 
 class SegmentationMetrics(Callback):
     def __init__(self, device="cpu"):
@@ -9,9 +10,9 @@ class SegmentationMetrics(Callback):
         self.val_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
 
-        self.train_dice = Dice(num_classes=2, ignore_index=0)
-        self.val_dice = Dice(num_classes=2, ignore_index=0)
-        self.test_dice = Dice(num_classes=2, ignore_index=0)
+        self.train_dice = Dice(num_classes=2, ignore_index=0, multiclass=True)
+        self.val_dice = Dice(num_classes=2, ignore_index=0, multiclass=True)
+        self.test_dice = Dice(num_classes=2, ignore_index=0, multiclass=True)
 
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
@@ -64,28 +65,39 @@ class SegmentationMetrics(Callback):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
-
+        B, C, T, W, H = preds.shape
         self.train_loss(loss.to(self.device))
-        self.train_jaccard(preds.to(self.device), targets.to(self.device))
-        self.train_dice(preds.to(self.device), targets.int().to(self.device))
+        self.train_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
+        self.train_dice(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
+        # dice_score = dice(preds.to(self.device), targets.int().to(self.device), num_classes=2, ignore_index=0, multiclass=True)
+        # self.train_jaccard(dice_score / (2 - dice_score))
+        # self.train_dice(preds.to(self.device), targets.int().to(self.device))
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
-
+        B, C, T, W, H = preds.shape
         self.val_loss(loss.to(self.device))
-        self.val_jaccard(preds.to(self.device), targets.to(self.device))
-        self.val_dice(preds.to(self.device), targets.int().to(self.device))
+        self.val_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
+        self.val_dice(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
+        # dice_score = dice(preds.to(self.device), targets.int().to(self.device), num_classes=2, ignore_index=0, multiclass=True)
+        # self.val_jaccard(dice_score / (2 - dice_score))
+        # self.val_dice(preds.to(self.device), targets.int().to(self.device))
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
+        B, C, T, W, H = preds.shape
 
         self.test_loss(loss.to(self.device))
-        self.test_jaccard(preds.to(self.device), targets.to(self.device))
-        self.test_dice(preds.to(self.device), targets.int().to(self.device))
+        # dice_score = dice(preds.to(self.device), targets.int().to(self.device), num_classes=2, ignore_index=0, multiclass=True)
+        self.test_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
+        self.test_dice(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
+
+        # self.test_jaccard(dice_score / (2 - dice_score))
+        # self.test_dice(preds.to(self.device), targets.int().to(self.device))
 
     def on_validation_epoch_end(self, trainer, pl_module):
         pl_module.log("train/seg_loss", self.train_loss, metric_attribute="train_loss", on_step=False, on_epoch=True, prog_bar=True)

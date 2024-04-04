@@ -46,7 +46,6 @@ class LIDCDataModule(LightningDataModule):
 
         self.batch_size_per_device = batch_size
 
-
     def prepare_data(self) -> None:
         """Download data if needed. Lightning ensures that `self.prepare_data()` is called only
         within a single process on CPU, so you can safely add your downloading logic within. In

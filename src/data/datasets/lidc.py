@@ -43,7 +43,7 @@ class LIDCDataset(Dataset):
             random_n = torch.rand(1)
             if random_n[0] > 0.5:
                 img = np.flip(img, 2)
-        
+
         imageout = torch.from_numpy(img.copy()).float()
         imageout = imageout.unsqueeze(0)
         mask = torch.from_numpy(mask.copy())
@@ -56,7 +56,7 @@ class LIDCDataset(Dataset):
 
 if __name__ == "__main__":
     ds = LIDCDataset(root_dir='/work/hpc/pgl/LIDC-IDRI-Preprocessing/data/', mask_only=True)
-    print('Number of samples in dataset:', ds.__len__() )
+    print('Number of samples in dataset:', ds.__len__())
     i = 0
     # for i in range(12):
     print(ds[i]['data'].shape)
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     t, h, w, c = image.shape
     # frame = torch.concat((x[0], y[0], pred[0]), dim=1)  # Concatenate images horizontally
     # frame = np.concatenate((x[0], y[0], pred[0]), axis=1)  # Concatenate images horizontally
-    
+
     # from IPython import embed; embed()
     # for i in range(t):
     #     # Assuming x, y, and pred are images represented as numpy arrays

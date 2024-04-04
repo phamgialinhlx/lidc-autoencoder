@@ -25,9 +25,25 @@ def hinge_d_loss(logits_real, logits_fake):
 
 def vanilla_d_loss(logits_real, logits_fake):
     d_loss = 0.5 * (
-        torch.mean(torch.nn.functional.softplus(-logits_real)) +
+        torch.mean(torch.nn.functional.softplus(-logits_real)) + \
         torch.mean(torch.nn.functional.softplus(logits_fake)))
     return d_loss
+
+def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False, eval=True):
+    try:
+        ae = MultiheadVQGAN.load_from_checkpoint(ckpt_path, map_location=map_location)
+        if ae.use_ema:
+            ae.model_ema.store(ae.parameters())
+            ae.model_ema.copy_to(ae)
+        if disable_decoder:
+            ae.decoder = None
+
+    except Exception as e:
+        print(f"Failed to load autoencoder from {ckpt_path}: {e}")
+    if eval:
+        ae.eval()
+        ae.freeze()
+    return ae
 
 class MultiheadVQGAN(LightningModule):
     def __init__(self,
@@ -115,7 +131,7 @@ class MultiheadVQGAN(LightningModule):
         else:
             raise NotImplementedError(
                 f"Discriminator loss type {disc_loss_type} not implemented")
-        
+
         self.perceptual_model = LPIPS().eval()
 
         self.image_gan_weight = image_gan_weight
@@ -178,7 +194,7 @@ class MultiheadVQGAN(LightningModule):
         loss = self.clasification_criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
-    
+
     def forward_segmentation(self, batch):
         x = batch['data']
         y = batch['mask'].long()
@@ -321,7 +337,7 @@ class MultiheadVQGAN(LightningModule):
         perceptual_loss = self.perceptual_model(
             frames, frames_recon) * self.perceptual_weight
         return recon_loss, x_recon, vq_output, perceptual_loss
-    
+
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
             self.model_ema(self)
@@ -358,7 +374,7 @@ class MultiheadVQGAN(LightningModule):
         discloss = self.forward(x, optimizer_idx=1)
         self.manual_backward(discloss)
         opt_disc.step()
-        
+
         if self.use_same_optimizer:
             opt_ds.zero_grad()
             seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
@@ -443,39 +459,39 @@ class MultiheadVQGAN(LightningModule):
 
     def configure_optimizers(self):
         lr = self.lr
-        opt_ae = torch.optim.Adam(list(self.encoder.parameters()) +
-                                  list(self.decoder.parameters()) +
-                                  list(self.pre_vq_conv.parameters()) +
-                                  list(self.post_vq_conv.parameters()) +
+        opt_ae = torch.optim.Adam(list(self.encoder.parameters()) + \
+                                  list(self.decoder.parameters()) + \
+                                  list(self.pre_vq_conv.parameters()) + \
+                                  list(self.post_vq_conv.parameters()) + \
                                   list(self.codebook.parameters()),
                                   lr=lr, betas=(0.5, 0.9))
-        opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters()) +
+        opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters()) + \
                                     list(self.video_discriminator.parameters()),
                                     lr=lr, betas=(0.5, 0.9))
         opt_list = [opt_ae, opt_disc]
         if self.use_same_optimizer:
-            opt_ds = torch.optim.Adam(list(self.segmentation_decoder.parameters()) +
-                                      list(self.encoder.parameters()) +
+            opt_ds = torch.optim.Adam(list(self.segmentation_decoder.parameters()) + \
+                                      list(self.encoder.parameters()) + \
                                       list(self.classifier_head.parameters()),
                                       lr=0.001, betas=(0.5, 0.9))
             opt_list.append(opt_ds)
         else:
             if self.segmentation_decoder is not None:
-                opt_seg = torch.optim.Adam(list(self.segmentation_decoder.parameters()) +
+                opt_seg = torch.optim.Adam(list(self.segmentation_decoder.parameters()) + \
                                         list(self.encoder.parameters()), lr=0.01, betas=(0.5, 0.9))
                 opt_list.append(opt_seg)
             if self.classifier_head is not None:
-                opt_cls = torch.optim.Adam(list(self.classifier_head.parameters()) +
+                opt_cls = torch.optim.Adam(list(self.classifier_head.parameters()) + \
                                         list(self.encoder.parameters()), lr=lr, betas=(0.5, 0.9))
                 opt_list.append(opt_cls)
-        
+
         return (opt_list, [])
 
     def log_images(self, batch, **kwargs):
         log = dict()
         x = batch['data']
         x = x.to(self.device)
-        
+
         if self.use_ema:
             with self.ema_scope():
                 frames, frames_rec, _, _ = self(x, log_image=True)

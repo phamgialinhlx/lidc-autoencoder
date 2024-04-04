@@ -14,7 +14,7 @@ def main(cfg: DictConfig) -> Optional[float]:
     sample = datamodule.val_dataloader().dataset[0]['data']
     print('Shape of a sample:', sample.shape)
     model: LightningModule = hydra.utils.instantiate(cfg.model).to('cuda')
-    
+
     sample = sample.unsqueeze(0).to('cuda')
     recon_loss, x_recon, vq_output, perceptual_loss = model(sample)
     print('vq_output["embeddings"].shape', vq_output["embeddings"].shape)
