@@ -11,7 +11,7 @@ from einops import rearrange
 from einops_exts import check_shape, rearrange_many
 from src.utils.model_utils import exists, is_odd, default, prob_mask_like
 
-class UNet3D(nn.Module):
+class AttnUNet3D(nn.Module):
     def __init__(self,
             n_channels,
             n_classes,
@@ -34,7 +34,7 @@ class UNet3D(nn.Module):
           use_ds_conv = if True, we use depthwise-separable convolutional layers. in my experience, this is of little help. This
                   appears to be because with 3D data, the vast vast majority of GPU RAM is the input data/labels, not the params, so little
                   VRAM is saved by using ds_conv, and yet performance suffers."""
-        super(UNet3D, self).__init__()
+        super(AttnUNet3D, self).__init__()
         _channels = (base_channel, base_channel * 2, base_channel * 4, base_channel * 8, base_channel * 16)
         
         def temporal_attn(dim): return EinopsToAndFrom('b c f h w', 'b (h w) f c', Attention(
@@ -45,12 +45,13 @@ class UNet3D(nn.Module):
         self.channels = [int(c * width_multiplier) for c in _channels]
         self.trilinear = trilinear
         self.convtype = DepthwiseSeparableConv3d if use_ds_conv else nn.Conv3d
-        self.inc = DoubleConv(n_channels, self.channels[0], conv_type=self.convtype)
 
         rotary_emb = RotaryEmbedding(min(32, attn_dim_head))
 
         self.downs = nn.ModuleList([])
         for i in range(3):
+            if i == 0 or i == 1:
+                continue
             in_channels = self.channels[i]
             out_channels = self.channels[i + 1]
             self.downs.append(nn.ModuleList([
@@ -88,14 +89,18 @@ class UNet3D(nn.Module):
         self.outc = OutConv(self.channels[0], n_classes)
         # self.conv_last = DoubleConv(n_classes, n_classes, conv_type=self.convtype)
 
-    def forward(self, x, focus_present_mask=None, prob_focus_present=0.):
+    def forward(self, encoder, x, focus_present_mask=None, prob_focus_present=0.):
         batch, device = x.shape[0], x.device
 
         focus_present_mask = default(focus_present_mask, lambda: prob_mask_like(
             (batch,), prob_focus_present, device=device))
 
-        x = self.inc(x)
+        x = encoder.conv_first(x)
         h = [x]
+        for block in encoder.conv_blocks:
+            x = block.down(x)
+            x = block.res(x)
+            h.append(x)
         for maxpool, conv, spatial_attn, temporal_attn in self.downs:
             x = maxpool(x)
             x = conv(x)
@@ -404,7 +409,7 @@ if __name__ == "__main__":
     # Instantiate UNet model
     n_channels = 1  # Assuming grayscale input
     n_classes = 1   # Number of output classes
-    unet_model = UNet3D(
+    unet_model = AttnUNet3D(
         n_channels,
         n_classes
     )
