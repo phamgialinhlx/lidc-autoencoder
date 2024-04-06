@@ -23,7 +23,6 @@ def hinge_d_loss(logits_real, logits_fake):
     d_loss = 0.5 * (loss_real + loss_fake)
     return d_loss
 
-
 def vanilla_d_loss(logits_real, logits_fake):
     d_loss = 0.5 * (
         torch.mean(torch.nn.functional.softplus(-logits_real)) + \
