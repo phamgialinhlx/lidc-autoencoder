@@ -84,8 +84,6 @@ class Attention(nn.Module):
         sim = einsum('... h i d, ... h j d -> ... h i j', q, k)
 
         # relative positional bias
-        print('sim', sim.shape)
-        print('pos_bias', pos_bias.shape)
         if exists(pos_bias):
             sim = sim + pos_bias
 
@@ -451,28 +449,20 @@ class Unet3D(nn.Module):
             t = torch.cat((t, cond), dim=-1)
 
         h = []
-        print("time_rel_pos_bias", time_rel_pos_bias.shape)
-        print(x.shape)
         for block1, block2, spatial_attn, temporal_attn, downsample in self.downs:
             x = block1(x, t)
             x = block2(x, t)
-            print("block2", x.shape)
             x = spatial_attn(x)
             x = temporal_attn(x, pos_bias=time_rel_pos_bias,
                               focus_present_mask=focus_present_mask)
             h.append(x)
             x = downsample(x)
-            print(x.shape)
 
         x = self.mid_block1(x, t)
-        print("mid.block1", x.shape)
         x = self.mid_spatial_attn(x)
-        print("mid_spatial_attn", x.shape)
         x = self.mid_temporal_attn(
             x, pos_bias=time_rel_pos_bias, focus_present_mask=focus_present_mask)
-        print(x.shape)
         x = self.mid_block2(x, t)
-        print("mid.block2", x.shape)
 
         for block1, block2, spatial_attn, temporal_attn, upsample in self.ups:
             x = torch.cat((x, h.pop()), dim=1)

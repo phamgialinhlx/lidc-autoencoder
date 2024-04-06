@@ -59,7 +59,8 @@ class AttnUNet3D(nn.Module):
                 DoubleConv(in_channels, out_channels, conv_type=self.convtype),
                 Residual(PreNorm(out_channels, SpatialLinearAttention(
                         out_channels, heads=attn_heads))) if use_sparse_linear_attn else nn.Identity(),
-                Residual(PreNorm(out_channels, temporal_attn(out_channels)))
+                Residual(PreNorm(out_channels, temporal_attn(out_channels))),
+                nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1)
             ]))
         factor = 2 if trilinear else 1
         self.downs.append(nn.ModuleList([
@@ -67,7 +68,8 @@ class AttnUNet3D(nn.Module):
             DoubleConv(self.channels[3], self.channels[4] // factor, conv_type=self.convtype),
             Residual(PreNorm(self.channels[4] // factor, SpatialLinearAttention(
                     self.channels[4] // factor, heads=attn_heads))) if use_sparse_linear_attn else nn.Identity(),
-            Residual(PreNorm(self.channels[4] // factor, temporal_attn(self.channels[4] // factor)))
+            Residual(PreNorm(self.channels[4] // factor, temporal_attn(self.channels[4] // factor))),
+            nn.Conv3d(self.channels[4] // factor, self.channels[4] // factor, kernel_size=3, padding=1)
         ]))
         self.ups = nn.ModuleList([])
         
@@ -78,13 +80,15 @@ class AttnUNet3D(nn.Module):
                 Up(in_channels, out_channels, trilinear),
                 Residual(PreNorm(out_channels, SpatialLinearAttention(
                         out_channels, heads=attn_heads))) if use_sparse_linear_attn else nn.Identity(),
-                Residual(PreNorm(out_channels, temporal_attn(out_channels)))
+                Residual(PreNorm(out_channels, temporal_attn(out_channels))),
+                nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1)
             ]))
         self.ups.append(nn.ModuleList([
             Up(self.channels[1], self.channels[0], trilinear),
             Residual(PreNorm(self.channels[0], SpatialLinearAttention(
                         self.channels[0], heads=attn_heads))) if use_sparse_linear_attn else nn.Identity(),
-            Residual(PreNorm(self.channels[0], temporal_attn(self.channels[0])))
+            Residual(PreNorm(self.channels[0], temporal_attn(self.channels[0]))),
+            nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1)
         ]))
         self.outc = OutConv(self.channels[0], n_classes)
         # self.conv_last = DoubleConv(n_classes, n_classes, conv_type=self.convtype)
@@ -101,15 +105,20 @@ class AttnUNet3D(nn.Module):
             x = block.down(x)
             x = block.res(x)
             h.append(x)
-        for maxpool, conv, spatial_attn, temporal_attn in self.downs:
+        for maxpool, conv, spatial_attn, temporal_attn, conv2 in self.downs:
             x = maxpool(x)
             x = conv(x)
             x = spatial_attn(x)
             x = temporal_attn(x, focus_present_mask=focus_present_mask)
+            x = conv2(x)
             h.append(x)
         h.pop()
-        for up, spatial_attn, temporal_attn in self.ups:
+        for i, (up, spatial_attn, temporal_attn, conv) in enumerate(self.ups):
             x = up(x, h.pop())
+            if i <= 2:
+                x = temporal_attn(x, focus_present_mask=focus_present_mask)
+                x = spatial_attn(x)
+            x = conv(x)
         logits = self.outc(x)
         return F.sigmoid(logits)
 
