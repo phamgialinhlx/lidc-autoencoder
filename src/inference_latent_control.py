@@ -19,7 +19,7 @@ def get_a_scan(path: str):
     # range normalization to [-1, 1]
     img = (img - img.min()) / (img.max() - img.min())
     img = img * 2 - 1
-    
+
     imageout = torch.from_numpy(img.copy()).float()
     imageout = imageout.unsqueeze(0)
     return imageout

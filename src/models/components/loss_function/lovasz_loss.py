@@ -85,7 +85,7 @@ class LovaszLoss(nn.Module):
 
 
 class BCE_Lovasz(nn.Module):
-    def __init__(self, pos_weight: torch.FloatTensor = None):
+    def __init__(self, pos_weight: torch.FloatTensor = None, *args, **kwargs):
         super().__init__()
         self.nll_loss = BCEWithLogitsLoss(pos_weight=pos_weight)
 

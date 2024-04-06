@@ -10,9 +10,9 @@ class SegmentationMetrics(Callback):
         self.val_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
 
-        self.train_dice = Dice(num_classes=2, ignore_index=0, multiclass=True)
-        self.val_dice = Dice(num_classes=2, ignore_index=0, multiclass=True)
-        self.test_dice = Dice(num_classes=2, ignore_index=0, multiclass=True)
+        self.train_dice = Dice(ignore_index=0)
+        self.val_dice = Dice(ignore_index=0)
+        self.test_dice = Dice(ignore_index=0)
 
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
@@ -37,15 +37,6 @@ class SegmentationMetrics(Callback):
         self.val_loss = self.val_loss.to(self.device)
         self.test_loss = self.test_loss.to(self.device)
 
-    # def on_train_start(self):
-    #     # by default lightning executes validation step sanity checks before training starts,
-    #     # so it's worth to make sure validation metrics don't store results from these checks
-    #     # self.val_loss.reset()
-    #     self.val_jaccard.reset()
-    #     self.val_dice.reset()
-        # self.val_metric_best_1.reset()
-        # self.val_metric_best_2.reset()
-
     def on_train_epoch_start(self, trainer, pl_module):
         self.train_jaccard.reset()
         self.train_dice.reset()
@@ -69,10 +60,7 @@ class SegmentationMetrics(Callback):
         self.train_loss(loss.to(self.device))
         self.train_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
         self.train_dice(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
-        # dice_score = dice(preds.to(self.device), targets.int().to(self.device), num_classes=2, ignore_index=0, multiclass=True)
-        # self.train_jaccard(dice_score / (2 - dice_score))
-        # self.train_dice(preds.to(self.device), targets.int().to(self.device))
-
+        
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
@@ -80,53 +68,36 @@ class SegmentationMetrics(Callback):
         B, C, T, W, H = preds.shape
         self.val_loss(loss.to(self.device))
         self.val_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
+
         self.val_dice(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
-        # dice_score = dice(preds.to(self.device), targets.int().to(self.device), num_classes=2, ignore_index=0, multiclass=True)
-        # self.val_jaccard(dice_score / (2 - dice_score))
-        # self.val_dice(preds.to(self.device), targets.int().to(self.device))
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
         B, C, T, W, H = preds.shape
-
         self.test_loss(loss.to(self.device))
-        # dice_score = dice(preds.to(self.device), targets.int().to(self.device), num_classes=2, ignore_index=0, multiclass=True)
         self.test_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
         self.test_dice(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
 
-        # self.test_jaccard(dice_score / (2 - dice_score))
-        # self.test_dice(preds.to(self.device), targets.int().to(self.device))
-
     def on_validation_epoch_end(self, trainer, pl_module):
-        pl_module.log("train/seg_loss", self.train_loss, metric_attribute="train_loss", on_step=False, on_epoch=True, prog_bar=True)
-        pl_module.log("train/jaccard", self.train_jaccard.compute())
-        pl_module.log("train/dice", self.train_dice.compute())
+        if not trainer.sanity_checking:
+            pl_module.log("train/seg_loss", self.train_loss, metric_attribute="train_loss", on_step=False, on_epoch=True, prog_bar=True)
+            pl_module.log("train/jaccard", self.train_jaccard.compute(), on_step=False, on_epoch=True, prog_bar=False)
+            pl_module.log("train/dice", self.train_dice.compute(), on_step=False, on_epoch=True, prog_bar=False)
 
-        val_jaccard = self.val_jaccard.compute()
-        val_dice = self.val_dice.compute()
-        pl_module.log("val/seg_loss", self.val_loss, metric_attribute="val_loss", on_step=False, on_epoch=True, prog_bar=True)
-        pl_module.log("val/jaccard", val_jaccard)
-        pl_module.log("val/dice", val_dice)
+            val_jaccard = self.val_jaccard.compute()
+            val_dice = self.val_dice.compute()
+            pl_module.log("val/seg_loss", self.val_loss, metric_attribute="val_loss", on_step=False, on_epoch=True, prog_bar=True)
+            pl_module.log("val/jaccard", self.val_jaccard.compute(), on_step=False, on_epoch=True, prog_bar=False)
+            pl_module.log("val/dice", self.val_dice.compute(), on_step=False, on_epoch=True, prog_bar=False)
 
-        self.val_metric_best_1 = max(self.val_metric_best_1, val_jaccard)
-        self.val_metric_best_2 = max(self.val_metric_best_2, val_dice)
-        pl_module.log("val/jaccard_best", self.val_metric_best_1)
-        pl_module.log("val/dice_best", self.val_metric_best_2)
+            self.val_metric_best_1 = max(self.val_metric_best_1, val_jaccard)
+            self.val_metric_best_2 = max(self.val_metric_best_2, val_dice)
+            pl_module.log("val/jaccard_best", self.val_metric_best_1, on_step=False, on_epoch=True, prog_bar=False)
+            pl_module.log("val/dice_best", self.val_metric_best_2, on_step=False, on_epoch=True, prog_bar=False)
 
-        if trainer.testing:
-            pl_module.log("test/seg_loss", self.test_loss, metric_attribute="test_loss", on_step=False, on_epoch=True, prog_bar=True)
-            pl_module.log("test/jaccard", self.test_jaccard.compute())
-            pl_module.log("test/dice", self.test_dice.compute())
-    # def on_validation_epoch_end(self):
-    #     # get current val acc
-    #     acc1 = self.val_jaccard.compute()
-    #     acc2 = self.val_dice.compute()
-    #     # update best so far val acc
-    #     self.val_metric_best_1(acc1)
-    #     self.val_metric_best_2(acc2)
-    #     # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
-    #     # otherwise metric would be reset by lightning after each epoch
-    #     # self.log("val/jaccard_best", self.val_metric_best_1.compute(), prog_bar=True)
-    #     # self.log("val/dice_best", self.val_metric_best_2.compute(), prog_bar=True)
+            if trainer.testing:
+                pl_module.log("test/seg_loss", self.test_loss, metric_attribute="test_loss", on_step=False, on_epoch=True, prog_bar=True)
+                pl_module.log("test/jaccard", self.test_jaccard.compute(), on_step=False, on_epoch=True, prog_bar=False)
+                pl_module.log("test/dice", self.test_dice.compute(), on_step=False, on_epoch=True, prog_bar=False)

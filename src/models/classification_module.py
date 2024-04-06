@@ -6,7 +6,7 @@ import torch
 from omegaconf import DictConfig
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
-from torchmetrics.classification import Accuracy, F1Score, Precision, Recall, ROC, CohenKappa, AUC
+from torchmetrics.classification import Accuracy, F1Score, Precision, Recall, ROC, CohenKappa
 
 import rootutils
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)

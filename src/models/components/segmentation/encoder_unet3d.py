@@ -46,8 +46,8 @@ class EncoderUNet3D(nn.Module):
         self.up3 = Up(self.channels[2], self.channels[1] // factor, trilinear)
         self.up4 = Up(self.channels[1], self.channels[0], trilinear)
         self.outc = OutConv(self.channels[0], n_classes)
-        if n_classes == 1:
-            self.last_conv = nn.Sigmoid()
+        # if n_classes == 1:
+        #   self.last_conv = nn.Sigmoid()
         # elif n_classes == 2:
         #   self.last_conv = nn.Softmax(dim=1)
 
@@ -67,10 +67,10 @@ class EncoderUNet3D(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        if self.n_classes == 1:
-            return self.last_conv(logits)
-        else:
-            return logits
+        # if self.n_classes == 1:
+        #   return self.last_conv(logits)
+        # else:
+        return logits
 
 
 class DoubleConv(nn.Module):

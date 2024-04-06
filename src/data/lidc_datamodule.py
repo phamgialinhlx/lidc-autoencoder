@@ -185,6 +185,6 @@ def main(cfg: DictConfig):
     for i, batch in enumerate(datamodule.test_dataloader()):
         cnt += batch['label']
     print('Number of positive samples:', cnt)
-    
+
 if __name__ == "__main__":
     main()

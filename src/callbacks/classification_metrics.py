@@ -4,27 +4,27 @@ from torchmetrics import MaxMetric, MeanMetric
 from lightning.pytorch.callbacks import Callback
 
 class ClassificationMetrics(Callback):
-    def __init__(self, num_classes: int = 2, device="cpu"):
+    def __init__(self, num_classes: int = 2, task="multiclass", device="cpu"):
         super().__init__()
         self.num_classes = num_classes
-        self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="micro")
-        self.val_acc = Accuracy(task="multiclass", num_classes=num_classes, average="micro")
-        self.test_acc = Accuracy(task="multiclass", num_classes=num_classes, average="micro")
+        self.train_acc = Accuracy(task=task, num_classes=num_classes, average="micro")
+        self.val_acc = Accuracy(task=task, num_classes=num_classes, average="micro")
+        self.test_acc = Accuracy(task=task, num_classes=num_classes, average="micro")
 
-        self.train_f1 = F1Score(num_classes=num_classes, average="micro")
-        self.train_precision = Precision(num_classes=num_classes, average="micro")
-        self.train_recall = Recall(num_classes=num_classes, average="micro")
-        self.train_kappa = CohenKappa(num_classes=num_classes)
+        self.train_f1 = F1Score(task=task, num_classes=num_classes, average="micro")
+        self.train_precision = Precision(task=task, num_classes=num_classes, average="micro")
+        self.train_recall = Recall(task=task, num_classes=num_classes, average="micro")
+        self.train_kappa = CohenKappa(task=task, num_classes=num_classes)
 
-        self.val_f1 = F1Score(num_classes=num_classes, average="micro")
-        self.val_precision = Precision(num_classes=num_classes, average="micro")
-        self.val_recall = Recall(num_classes=num_classes, average="micro")
-        self.val_kappa = CohenKappa(num_classes=num_classes)
+        self.val_f1 = F1Score(task=task, num_classes=num_classes, average="micro")
+        self.val_precision = Precision(task=task, num_classes=num_classes, average="micro")
+        self.val_recall = Recall(task=task, num_classes=num_classes, average="micro")
+        self.val_kappa = CohenKappa(task=task, num_classes=num_classes)
 
-        self.test_f1 = F1Score(num_classes=num_classes, average="micro")
-        self.test_precision = Precision(num_classes=num_classes, average="micro")
-        self.test_recall = Recall(num_classes=num_classes, average="micro")
-        self.test_kappa = CohenKappa(num_classes=num_classes)
+        self.test_f1 = F1Score(task=task, num_classes=num_classes, average="micro")
+        self.test_precision = Precision(task=task, num_classes=num_classes, average="micro")
+        self.test_recall = Recall(task=task, num_classes=num_classes, average="micro")
+        self.test_kappa = CohenKappa(task=task, num_classes=num_classes)
 
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
@@ -58,7 +58,6 @@ class ClassificationMetrics(Callback):
         self.val_loss = self.val_loss.to(self.device)
         self.test_loss = self.test_loss.to(self.device)
 
-    # def reset(self):
     def on_train_epoch_start(self, trainer, pl_module):
         self.train_acc.reset()
         self.train_f1.reset()
@@ -94,7 +93,7 @@ class ClassificationMetrics(Callback):
         self.train_precision(preds.to(self.device), targets.to(self.device))
         self.train_recall(preds.to(self.device), targets.to(self.device))
         self.train_kappa(preds.to(self.device), targets.to(self.device))
-
+        
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         loss = outputs["cls_loss"]
         preds = outputs["cls_preds"]

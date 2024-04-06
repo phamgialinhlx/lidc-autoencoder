@@ -18,10 +18,10 @@ model:
   use_ema: True
   use_same_optimizer: False
   segmentation_decoder:
-    n_classes: 2
+    n_classes: 1
   segmentation_criterion: 
-    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1.0, 50.0]
+    _target_: src.models.components.loss_function.lovasz_loss.BCE_Lovasz
+
   clasification_criterion:
     _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
     weight: [50.0, 1.0]
@@ -34,7 +34,7 @@ data:
 
 logger: 
   wandb:
-    name: "multihead_autoencoder2"
+    name: "multihead_autoencoder3"
 
 callbacks:
   metrics_logger:
@@ -51,7 +51,7 @@ callbacks:
       win_size: 3
       
   model_checkpoint:
-    monitor: "val/msssim"
+    monitor: "val/dice"
     mode: "max"
     save_last: True
   

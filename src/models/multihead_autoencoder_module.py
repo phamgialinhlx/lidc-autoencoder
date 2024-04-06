@@ -15,6 +15,7 @@ from src.models.components.vqgan import Encoder, Decoder, SamePadConv3d, Codeboo
 from src.models.components.vqgan.utils import shift_dim, adopt_weight, comp_getattr
 from src.models.components.loss_function.lossbinary import LossBinary
 from src.models.components.loss_function.lovasz_loss import BCE_Lovasz
+from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 
 def hinge_d_loss(logits_real, logits_fake):
     loss_real = torch.mean(F.relu(1. - logits_real))
@@ -73,7 +74,7 @@ class MultiheadVQGAN(LightningModule):
             segmentation_criterion = None,
             classifier_head = None,
             clasification_criterion = None,
-            use_same_optimizer = False,):
+            use_same_optimizer = False):
 
         super().__init__()
         self.save_hyperparameters()
@@ -154,6 +155,8 @@ class MultiheadVQGAN(LightningModule):
             self.model_ema = LitEma(self)
             print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
 
+        # self.dice = Dice(ignore_index=0)
+        
     @contextmanager
     def ema_scope(self, context=None):
         if self.use_ema:
@@ -206,14 +209,18 @@ class MultiheadVQGAN(LightningModule):
                 BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
-
+            BCE_pos_weight = torch.FloatTensor([50.0]).to(device=self.device)
             self.segmentation_criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         logits = self.segmentation_decoder(self.encoder, x)
-        # from IPython import embed; embed()
-        loss = self.segmentation_criterion(logits, y.squeeze(1))
-        preds = torch.argmax(logits, dim=1).unsqueeze(0)
-        # from IPython import embed; embed()
+        if self.segmentation_decoder.n_classes == 2:
+            loss = self.segmentation_criterion(logits, y.squeeze(1))
+            preds = torch.argmax(logits, dim=1).unsqueeze(0)
+        else:
+            loss = self.segmentation_criterion(logits, y.float())
+            preds = torch.sigmoid(logits)
+            preds[preds >= 0.5] = 1
+            preds[preds < 0.5] = 0
         # Code to try to fix CUDA out of memory issues
         del x
         import gc
@@ -374,7 +381,6 @@ class MultiheadVQGAN(LightningModule):
         discloss = self.forward(x, optimizer_idx=1)
         self.manual_backward(discloss)
         opt_disc.step()
-
         if self.use_same_optimizer:
             opt_ds.zero_grad()
             seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
@@ -402,27 +408,26 @@ class MultiheadVQGAN(LightningModule):
         elif self.classifier_head is None and self.segmentation_decoder is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
+    # def on_validation_epoch_end(self):
+    #     self.dice.reset()
+
     def validation_step(self, batch, batch_idx):
         x = batch['data']  # TODO: batch['stft']
-        if self.use_ema:
-            with self.ema_scope():
-                recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-                if self.segmentation_decoder is not None:
-                    seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-                if self.classifier_head is not None:
-                    cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
-        else:
+        with self.ema_scope():
             recon_loss, _, vq_output, perceptual_loss = self.forward(x)
-            if self.segmentation_decoder is not None:
-                seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-            if self.classifier_head is not None:
-                cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
+        if self.segmentation_decoder is not None:
+            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+        if self.classifier_head is not None:
+            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
 
+        # B, C, T, W, H = seg_preds.shape
+        # self.dice(seg_preds.view(B, -1).to(self.device), seg_targets.to(self.device).view(B, -1))
+        # self.log('val/module_dice', self.dice.compute(), on_step=False, on_epoch=True, prog_bar=False)
+        
         self.log('val/recon_loss', recon_loss, prog_bar=True)
         self.log('val/perceptual_loss', perceptual_loss, prog_bar=True)
         self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)
         self.log('val/commitment_loss', vq_output['commitment_loss'], prog_bar=True)
-
         if self.segmentation_decoder is not None and self.classifier_head is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
                     "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
