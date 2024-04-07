@@ -116,11 +116,11 @@ class AttnUNet3D(nn.Module):
         for i, (up, spatial_attn, temporal_attn, conv) in enumerate(self.ups):
             x = up(x, h.pop())
             if i <= 2:
-                x = temporal_attn(x, focus_present_mask=focus_present_mask)
                 x = spatial_attn(x)
+                x = temporal_attn(x, focus_present_mask=focus_present_mask)
             x = conv(x)
         logits = self.outc(x)
-        return F.sigmoid(logits)
+        return logits
 
 class RelativePositionBias(nn.Module):
     def __init__(
