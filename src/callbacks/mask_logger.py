@@ -67,6 +67,15 @@ class MaskLogger(Callback):
             pred[pred == 1] = 255
             pred = pred.cpu().detach().numpy()
 
+            seg = None
+            if "segmentation" in self.batch.keys():
+                seg = self.batch['segmentation']
+                seg = (seg + 1.0) * 127.5  # std + mean
+                torch.clamp(seg, 0, 255)
+                seg = seg.squeeze(0)
+                seg = seg.permute(1, 2, 3, 0)
+                seg = seg.cpu().numpy()
+            
             frames = []
             t, h, w, c = x.shape
             # frame = torch.concat((x[0], y[0], pred[0]), dim=1)  # Concatenate images horizontally
@@ -78,9 +87,13 @@ class MaskLogger(Callback):
                 x_padded = np.pad(x[i], ((border_width, border_width), (border_width, border_width), (0, 0)), mode='constant', constant_values=255)
                 y_padded = np.pad(y[i], ((border_width, border_width), (border_width, border_width), (0, 0)), mode='constant', constant_values=255)
                 pred_padded = np.pad(pred[i], ((border_width, border_width), (border_width, border_width), (0, 0)), mode='constant', constant_values=255)
-
-                # Now concatenate the images with borders
-                frame = np.concatenate((x_padded, y_padded, pred_padded), axis=1)  # Concatenate images horizontally with borders
+                if seg is not None:
+                    seg_padded = np.pad(seg[i], ((border_width, border_width), (border_width, border_width), (0, 0)), mode='constant', constant_values=255)
+                    # Now concatenate the images with borders
+                    frame = np.concatenate((x_padded, y_padded, pred_padded, seg_padded), axis=1)
+                else:
+                    # Now concatenate the images with borders
+                    frame = np.concatenate((x_padded, y_padded, pred_padded), axis=1)  # Concatenate images horizontally with borders
                 frames.append(frame.astype(np.uint8))
 
             imageio.mimsave(path, frames, fps=6)

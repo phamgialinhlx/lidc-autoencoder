@@ -1,0 +1,24 @@
+_target_: src.models.vq_gan_3d_seg_head.VQGANSegHead
+
+embedding_dim: 8
+n_codes: 16384
+n_hiddens: 16
+lr: 3e-4
+image_channels: 1
+downsample: [8, 8, 8]
+disc_channels: 64
+disc_layers: 3
+discriminator_iter_start: 10000
+disc_loss_type: "hinge"
+image_gan_weight: 1.0
+video_gan_weight: 1.0
+l1_weight: 4.0
+gan_feat_weight: 4
+perceptual_weight: 4.0
+i3d_feat: False
+restart_thres: 1.0
+no_random_restart: False
+norm_type: "group"
+padding_type: "replicate"
+num_groups: 32
+use_ema: True

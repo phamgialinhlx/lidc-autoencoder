@@ -1,0 +1,69 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=vq_gan_3d
+
+
+defaults:
+  - override /data: lidc
+  - override /model: segmentation_ae
+  - override /callbacks: segmentation
+  - override /trainer: default
+  - override /logger: wandb
+
+tags: ["segmentation", "lidc"]
+task_name: "train_segmentation"
+
+data:
+  train_val_test_split: [80, 10, 10]
+  augmentation: False
+  image_size: 128
+  batch_size: 1
+  include_mask: True
+  include_segmentation: True
+
+model:
+  net: 
+    _target_: src.models.components.segmentation.origin_unetplusplus.UNetPlusPlus3D
+
+    in_channels: 1
+    base_channels: 16
+    n_classes: 2
+    number_unet: 4
+    conv_layer: Conv3d
+    norm_layer: InstanceNorm3d
+    activate_layer: LeakyReLU
+    transpconv_layer: ConvTranspose3d
+    conv_kwargs:
+      kernel_size: 3
+      padding: 1
+    norm_kwargs:
+      eps: 1e-05
+      affine: true
+    activate_kwargs:
+      negative_slope: 0.01
+      inplace: true
+    transpconv_kwargs:
+      stride: 2
+      kernel_size: 2
+      bias: false
+  autoencoder_path: "/work/hpc/pgl/lung-diffusion/outputs/vq_gan_3d_seg_head/lung-thesis/2dyry4hr/checkpoints/epoch=115-step=187456.ckpt"
+  criterion: 
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [1.0, 50.0]
+
+logger: 
+  wandb:
+    name: "segmentation_ae_unet_pp"
+
+callbacks:
+  model_checkpoint:
+    monitor: "val/dice"
+    mode: "max"
+    save_last: True
+    
+trainer:
+  max_epochs: 1000
+  accelerator: gpu
+
+  # precision: 16-mixed

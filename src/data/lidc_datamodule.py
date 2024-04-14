@@ -20,7 +20,9 @@ class LIDCDataModule(LightningDataModule):
         image_size: int = 128,
         train_val_test_split: Tuple[int, int, int] = (80, 10, 10),
         augmentation: bool = True,
-        mask_only: bool = False,
+        mask_only: bool = False, 
+        include_mask: bool = False, 
+        include_segmentation: bool = False,
         num_workers: int = 0,
         pin_memory: bool = False,
     ) -> None:
@@ -45,7 +47,7 @@ class LIDCDataModule(LightningDataModule):
         self.data_test: Optional[Dataset] = None
 
         self.batch_size_per_device = batch_size
-
+        
     def prepare_data(self) -> None:
         """Download data if needed. Lightning ensures that `self.prepare_data()` is called only
         within a single process on CPU, so you can safely add your downloading logic within. In
@@ -76,7 +78,14 @@ class LIDCDataModule(LightningDataModule):
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            dataset = LIDCDataset(root_dir=self.hparams.data_dir, transforms=self.transforms, augmentation=self.hparams.augmentation, mask_only=self.hparams.mask_only)
+            dataset = LIDCDataset(
+                root_dir=self.hparams.data_dir, 
+                transforms=self.transforms, 
+                augmentation=self.hparams.augmentation, 
+                mask_only=self.hparams.mask_only,
+                include_mask=self.hparams.include_mask,
+                include_segmentation=self.hparams.include_segmentation
+            )
             dataset_length = len(dataset)
             train_number = int(dataset_length * self.hparams.train_val_test_split[0] / 100)
             val_number = int(dataset_length * self.hparams.train_val_test_split[1] / 100)
