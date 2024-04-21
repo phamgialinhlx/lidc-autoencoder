@@ -1,5 +1,6 @@
 from src.models.vq_gan_3d_module import VQGAN
 from src.models.vq_gan_3d_seg_head import VQGANSegHead
+from torch import nn
 from IPython import embed
 
 def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False, eval=True):
@@ -18,6 +19,19 @@ def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False, eval
     return ae
 
 def load_autoencoder_seg_head(ckpt_path, map_location="cuda", disable_decoder=False, eval=True):
+    class Autoencoder(nn.Module):
+        def __init__(self, pre_vq_conv, post_vq_conv, encoder, decoder, codebook):
+            super().__init__()
+            self.pre_vq_conv = pre_vq_conv
+            self.post_vq_conv = post_vq_conv
+            self.encoder = encoder
+            self.decoder = decoder
+            self.codebook = codebook
+        def forward(self, x):
+            z = self.pre_vq_conv(self.encoder(x))
+            vq_output = self.codebook(z)
+            x = self.decoder(self.post_vq_conv(vq_output['embeddings']))
+            return x
     try:
         ae = VQGANSegHead.load_from_checkpoint(ckpt_path, map_location=map_location)
         if ae.use_ema:
@@ -30,4 +44,4 @@ def load_autoencoder_seg_head(ckpt_path, map_location="cuda", disable_decoder=Fa
     if eval:
         ae.eval()
         ae.freeze()
-    return ae
+    return Autoencoder(ae.pre_vq_conv, ae.post_vq_conv, ae.encoder, ae.decoder, ae.codebook)

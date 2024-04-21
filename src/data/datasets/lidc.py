@@ -16,8 +16,7 @@ class LIDCDataset(Dataset):
         self.augmentation = augmentation
         self.transforms = transforms
         self.include_segmentation = include_segmentation
-        if include_segmentation:
-            self.paths = self.add_segmentation(root_dir)
+        self.paths = self.add_segmentation(root_dir)
         self.include_mask = include_mask
 
     def add_segmentation(self, dir):
@@ -87,14 +86,23 @@ class LIDCDataset(Dataset):
 if __name__ == "__main__":
     ds = LIDCDataset(root_dir='/work/hpc/pgl/LIDC-IDRI-Preprocessing/data/', mask_only=False, include_mask=True, include_segmentation=True)
     print('Number of samples in dataset:', ds.__len__())
-    i = 10
+    for i in range(1010):
+        print('Sample:', ds.paths[i][0], i)
+    i = 126
     print('Sample:', ds.paths[i][0])
     print('Sample:', ds.paths[i][1])
     print('Sample:', ds.paths[i][2])
     for j in range(ds.__len__()):
-        print('Sample:', ds.paths[j][2], ds[j]['segmentation'].shape, ds[j]['segmentation'].sum())
-        if ds[j]['segmentation'].shape[-1] == 512:
-            print(ds.paths[j][2])
+        path0 = ds.paths[j][0].split('/')[-1]
+        path1 = ds.paths[j][1].split('/')[-1]
+        path2 = ds.paths[j][2].split('/')[-1]
+        if path0[:4] != path1[:4] and path1[:4] != path2[:4]:
+            print(path0[:4])
+            print(path1[:4])
+            print(path2[:4])
+        # print('Sample:', ds.paths[j][2], ds[j]['segmentation'].shape, ds[j]['segmentation'].sum())
+        # if ds[j]['segmentation'].shape[-1] == 512:
+            # print(ds.paths[j][2])
     # 607
     # for i in range(12):
     print('data', ds[i]['data'].shape)

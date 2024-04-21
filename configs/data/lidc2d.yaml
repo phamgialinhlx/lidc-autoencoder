@@ -1,0 +1,10 @@
+_target_: src.data.lidc2d_datamodule.LIDC2DDataModule
+data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
+batch_size: 16
+image_size: 128
+train_val_test_split: [80, 10, 10]
+nodules_only: True
+include_mask: True
+include_segmentation: True
+num_workers: 4
+pin_memory: False

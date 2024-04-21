@@ -1,0 +1,32 @@
+_target_: src.models.vq_gan_2d_module.VQGAN
+
+loss: 
+  _target_: src.models.components.vq_gan_2d.losses.vqperceptual.VQLPIPSWithDiscriminator
+  disc_start: 1
+  codebook_weight: 1.0
+  disc_num_layers: 2
+  disc_in_channels: 1
+  disc_weight: 0.6
+  disc_conditional: false
+  n_classes: 1
+
+autoencoderconfig:
+  channels: 128
+  channel_multipliers: [1, 1, 2, 4]
+  n_resnet_blocks: 2
+  img_channels: 1
+  z_channels: 16
+  double_z: False
+  resolution: 128
+  attn_resolutions:
+  - 16
+  out_img_size: 16
+  out_channels: 16
+
+embed_dim: 16
+n_embed: 16384
+# lr: 4.5e-6
+lr: 5.0e-5
+remap: !!null
+use_ema: True
+ckpt_path: !!null

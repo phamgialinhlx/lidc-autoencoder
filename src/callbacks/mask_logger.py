@@ -41,7 +41,6 @@ class MaskLogger(Callback):
             os.makedirs(os.path.split(path)[0], exist_ok=True)
 
             x = self.batch['data']
-
             y = self.batch['mask'].int().squeeze(0)
             label = self.batch['label']
             if (hasattr(pl_module, "forward_segmentation")):

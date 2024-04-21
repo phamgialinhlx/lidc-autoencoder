@@ -19,7 +19,8 @@ data:
   augmentation: False
   image_size: 128
   batch_size: 1
-  mask_only: True
+  include_mask: True
+  include_segmentation: True
 
 model:
   net: 
@@ -48,7 +49,7 @@ model:
       bias: false
   criterion:
     _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1.0, 500.0]
+    weight: [1.0, 100.0]
 
 logger: 
   wandb:

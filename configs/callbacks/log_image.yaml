@@ -1,0 +1,3 @@
+log_image:
+  _target_: src.callbacks.log_image_callback.LogImageCallback
+  frequency: 10

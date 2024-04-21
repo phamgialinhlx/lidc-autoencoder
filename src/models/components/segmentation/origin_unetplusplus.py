@@ -67,8 +67,6 @@ class UNetPlusPlus3D(nn.Module):
         
         # output convolution to n_classes
         self.output_conv = nn.Conv3d(base_channels, n_classes, kernel_size=1, stride=1, padding=0, bias=False)
-        # self.softmax = nn.Softmax(dim=1)
-        self.sigmoid = nn.Sigmoid()
     
     def forward(self, input):
         x = [[None] * (i + 1) for i in range(self.number_unet + 1)]
@@ -93,7 +91,6 @@ class UNetPlusPlus3D(nn.Module):
                 x[i + 1][j + 1] = self.up_conv_modules[i][j](torch.cat(cat_elements, dim=1))
 
         output = self.output_conv(x[self.number_unet][self.number_unet])
-        output = self.sigmoid(output)
         return output        
                 
     def get_conv_block(self, in_channels, out_channels, have_pool=True):

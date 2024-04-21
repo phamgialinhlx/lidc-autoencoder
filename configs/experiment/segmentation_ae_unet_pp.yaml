@@ -20,7 +20,7 @@ data:
   image_size: 128
   batch_size: 1
   include_mask: True
-  include_segmentation: True
+  include_segmentation: False
 
 model:
   net: 

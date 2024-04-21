@@ -38,10 +38,6 @@ class SegmentationAEModule(LightningModule):
         # loss function
         self.criterion = criterion
 
-        # for averaging loss across batches
-        self.train_loss = MeanMetric()
-        self.val_loss = MeanMetric()
-        self.test_loss = MeanMetric()
         self.use_ema = use_ema
         if self.use_ema:
             self.model_ema = LitEma(self.net)
@@ -70,12 +66,11 @@ class SegmentationAEModule(LightningModule):
 
     def model_step(self, batch: Any):
         x = batch['data']
-        z = self.autoencoder.pre_vq_conv(self.autoencoder.encoder(x))
-        vq_output = self.autoencoder.codebook(z)
-        x = self.autoencoder.decoder(self.autoencoder.post_vq_conv(vq_output['embeddings']))
-
+        x = self.autoencoder(x)
+        x[x < -1.0] = -1.0
+        x[x > 1.0] = 1.0
+        x = (x + 1.0) * 127.5
         y = batch['mask'].long()
-        # from IPython import embed; embed()
         label = batch['label']
         if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
@@ -107,23 +102,16 @@ class SegmentationAEModule(LightningModule):
 
     def training_step(self, batch: Any, batch_idx: int):
         seg_loss, seg_preds, seg_targets = self.model_step(batch)
-        self.train_loss(seg_loss)
-        self.log("train/segmentation_loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
-        # we can return here dict with any tensors
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
         seg_loss, seg_preds, seg_targets = self.model_step(batch)
-        self.val_loss(seg_loss)
-        self.log("val/segmentation_loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
 
     def test_step(self, batch: Any, batch_idx: int):
         seg_loss, seg_preds, seg_targets = self.model_step(batch)
 
         # update and log metrics
-        self.test_loss(seg_loss)
-        self.log("test/segmentation_loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
 
     def forward_segmentation(self, batch):
@@ -143,7 +131,7 @@ class SegmentationAEModule(LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/segmentation_loss",
+                    "monitor": "val/seg_loss",
                     "interval": "epoch",
                     "frequency": 1,
                 },
