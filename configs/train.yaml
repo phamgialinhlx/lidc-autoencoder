@@ -43,7 +43,7 @@ train: True
 test: True
 
 # simply provide checkpoint path to resume training
-ckpt_path: null 
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_autoencoder/runs/2024-04-22_01-40-57/checkpoints/last.ckpt" 
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: null
