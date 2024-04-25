@@ -14,7 +14,7 @@ class MetricsLogger(Callback):
             msssim: MS_SSIM | None = None,
             mean: float = 0.5,
             std: float = 0.5
-        ):
+    ):
         super().__init__()
 
         self.ssim = ssim
@@ -111,7 +111,6 @@ class MetricsLogger(Callback):
             self.msssim.to(device)
             self.msssim_storages.append(self.msssim(reals, fakes))
             self.msssim.to('cpu')
-
 
     def log_metrics(self, pl_module: LightningModule, mode: str):
         if self.ssim is not None:

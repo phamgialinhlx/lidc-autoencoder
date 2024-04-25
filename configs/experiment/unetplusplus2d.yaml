@@ -1,0 +1,72 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=vq_gan_3d
+
+
+defaults:
+  - override /data: lidc_2d
+  - override /model: segmentation
+  - override /callbacks: segmentation2d
+  - override /trainer: default
+  - override /logger: wandb
+
+tags: ["segmentation", "lidc"]
+task_name: "train_segmentation"
+
+# data:
+#   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
+#   batch_size: 16
+#   image_size: 128
+#   train_val_test_split: [80, 10, 10]
+#   nodules_only: True
+#   include_mask: True
+#   include_segmentation: True
+#   num_workers: 4
+#   pin_memory: False
+
+model:
+  net: 
+    _target_: src.models.components.segmentation.origin_unetplusplus2d.UNetPlusPlus
+
+    in_channels: 1
+    base_channels: 32
+    n_classes: 2
+    number_unet: 4
+    conv_layer: Conv2d
+    norm_layer: InstanceNorm2d
+    activate_layer: LeakyReLU
+    transpconv_layer: ConvTranspose2d
+    conv_kwargs:
+      kernel_size: 3
+      padding: 1
+    norm_kwargs:
+      eps: 1e-05
+      affine: true
+    activate_kwargs:
+      negative_slope: 0.01
+      inplace: true
+    transpconv_kwargs:
+      stride: 2
+      kernel_size: 2
+      bias: false
+  criterion:
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [1.0, 50.0]
+
+logger: 
+  wandb:
+    name: "origin_unetplusplus2d"
+    id: 18gpp1mp
+
+callbacks:
+  model_checkpoint:
+    monitor: "val/dice"
+    mode: "max"
+    save_last: True
+    
+trainer:
+  max_epochs: 1000
+  accelerator: gpu
+
+  # precision: 16-mixed

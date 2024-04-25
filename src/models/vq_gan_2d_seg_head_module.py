@@ -163,7 +163,7 @@ class VQGANSegHead(LightningModule):
                 x = F.interpolate(x, size=new_resize, mode="bicubic")
             x = x.detach()
         return x
-    
+
     def training_step(self, batch, batch_idx):
         # https://github.com/pytorch/pytorch/issues/37142
         # try not to fool the heuristics

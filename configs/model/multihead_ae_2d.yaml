@@ -1,0 +1,47 @@
+_target_: src.models.multihead_ae_2d_module.MultiheadVQGAN2d
+
+loss: 
+  _target_: src.models.components.vq_gan_2d.losses.vqperceptual.VQLPIPSWithDiscriminator
+  disc_start: 1
+  codebook_weight: 1.0
+  disc_num_layers: 2
+  disc_in_channels: 1
+  disc_weight: 0.6
+  disc_conditional: false
+  n_classes: 1
+
+autoencoderconfig:
+  channels: 64
+  channel_multipliers: [1, 2, 2, 4]
+  n_resnet_blocks: 2
+  img_channels: 1
+  z_channels: 16
+  double_z: False
+  resolution: 64
+  attn_resolutions:
+  - 16
+  out_img_size: 16
+  out_channels: 16
+
+embed_dim: 16
+n_embed: 16384
+# lr: 4.5e-6
+lr: 3.0e-4
+remap: !!null
+use_ema: True
+ckpt_path: !!null
+use_same_optimizer: False
+segmentation_decoder:
+  _target_: src.models.components.segmentation.encoder_unet3d.EncoderUNet3D
+  n_channels: 1
+  n_classes: 2
+segmentation_criterion: !!null
+classifier_head:
+  _target_: src.models.components.classification.ResNet3D
+  num_blocks: [2, 2, 2, 2]
+  num_channels: 64
+  num_classes: 2
+clasification_criterion:
+  _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+  weight: [800.0, 1.0]
+

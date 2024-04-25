@@ -19,7 +19,7 @@ from src.models.components.vq_gan_2d.distributions import DiagonalGaussianDistri
 from src.models.components.vq_gan_2d.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
 from src.utils.ema import LitEma
 
-class VQGAN(LightningModule):
+class VQGANSeg(LightningModule):
     def __init__(
         self,
         embed_dim,
@@ -142,39 +142,18 @@ class VQGAN(LightningModule):
             return dec, diff, ind
         return dec, diff
 
-    def get_input(self, batch, k):
-        x = batch['data']
-        if len(x.shape) == 3:
-            # x = torch.unsqueeze(x, 0)
-            x = x[..., None]
-
-        if self.batch_resize_range is not None:
-            lower_size = self.batch_resize_range[0]
-            upper_size = self.batch_resize_range[1]
-            if self.global_step <= 4:
-                # do the first few batches with max size to avoid later oom
-                new_resize = upper_size
-            else:
-                new_resize = np.random.choice(
-                    np.arange(lower_size, upper_size + 16, 16)
-                )
-            if new_resize != x.shape[2]:
-                x = F.interpolate(x, size=new_resize, mode="bicubic")
-            x = x.detach()
-        return x
-
     def training_step(self, batch, batch_idx):
         # https://github.com/pytorch/pytorch/issues/37142
         # try not to fool the heuristics
-        x = self.get_input(batch, self.image_key)
-        xrec, qloss, ind = self(x, return_pred_indices=True)
+        x_seg = batch['segmentation']
+        xrec, qloss, ind = self(x_seg, return_pred_indices=True)
 
         opt_ae, opt_disc = self.optimizers()
 
         # autoencode
         aeloss, log_dict_ae = self.loss(
             qloss,
-            x,
+            x_seg,
             xrec,
             0,
             self.global_step,
@@ -194,7 +173,7 @@ class VQGAN(LightningModule):
         # discriminator
         discloss, log_dict_disc = self.loss(
             qloss,
-            x,
+            x_seg,
             xrec,
             1,
             self.global_step,
@@ -217,11 +196,11 @@ class VQGAN(LightningModule):
             log_dict = self._validation_step(batch, batch_idx)
 
     def _validation_step(self, batch, batch_idx, suffix=""):
-        x = self.get_input(batch, self.image_key)
-        xrec, qloss, ind = self(x, return_pred_indices=True)
+        x_seg = batch['segmentation']
+        xrec, qloss, ind = self(x_seg, return_pred_indices=True)
         aeloss, log_dict_ae = self.loss(
             qloss,
-            x,
+            x_seg,
             xrec,
             0,
             self.global_step,
@@ -232,7 +211,7 @@ class VQGAN(LightningModule):
 
         discloss, log_dict_disc = self.loss(
             qloss,
-            x,
+            x_seg,
             xrec,
             1,
             self.global_step,
@@ -254,11 +233,11 @@ class VQGAN(LightningModule):
             log_dict = self._test_step(batch, batch_idx)
 
     def _test_step(self, batch, batch_idx, suffix=""):
-        x = self.get_input(batch, self.image_key)
-        xrec, qloss, ind = self(x, return_pred_indices=True)
+        x_seg = batch['segmentation']
+        xrec, qloss, ind = self(x_seg, return_pred_indices=True)
         aeloss, log_dict_ae = self.loss(
             qloss,
-            x,
+            x_seg,
             xrec,
             0,
             self.global_step,
@@ -269,7 +248,7 @@ class VQGAN(LightningModule):
 
         discloss, log_dict_disc = self.loss(
             qloss,
-            x,
+            x_seg,
             xrec,
             1,
             self.global_step,
@@ -320,10 +299,10 @@ class VQGAN(LightningModule):
 
     def get_last_layer(self):
         return self.decoder.conv_out.weight
-    
+
     @torch.no_grad()
     def log_image(
-        self, 
+        self,
         images, 
         device: torch.device = torch.device('cpu'),
     ):
@@ -354,6 +333,7 @@ def main(cfg: DictConfig) -> Optional[float]:
     model: LightningModule = hydra.utils.instantiate(cfg.model)
     input = torch.randn(2, IMG_CHANNELS, IMG_SIZE, IMG_SIZE)
     print("Number of params: ", sum(p.numel() for p in model.parameters()))
+
     def encode_check(model, img):
         x = model.encoder.conv_in(img)
 
@@ -364,7 +344,7 @@ def main(cfg: DictConfig) -> Optional[float]:
                 if len(model.encoder.down[i_level].attn) > 0:
                     h = model.encoder.down[i_level].attn[i_block](h)
                 hs.append(h)
-            if i_level != model.encoder.num_resolutions-1:
+            if i_level != model.encoder.num_resolutions - 1:
                 hs.append(model.encoder.down[i_level].downsample(hs[-1]))
 
         # middle

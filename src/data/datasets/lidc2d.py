@@ -8,17 +8,19 @@ import os
 
 class LIDC2DDataset(Dataset):
     def __init__(
-        self, 
-        root_dir='', 
+        self,
+        root_dir='',
         transforms=None,
-        nodules_only=False, 
-        include_mask=False, 
+        nodules_only=False,
+        include_origin_image=True,
+        include_mask=False,
         include_segmentation=False
     ):
         super(LIDC2DDataset, self).__init__()
         self.paths = self.get_paths(os.path.join(root_dir, 'nodule'))
         if not nodules_only:
             self.paths += self.get_paths(os.path.join(root_dir, 'clean'))
+        self.include_origin_image = include_origin_image
         self.include_mask = include_mask
         self.include_segmentation = include_segmentation
         self.transforms = transforms
@@ -40,18 +42,17 @@ class LIDC2DDataset(Dataset):
         # range normalization to [-1, 1]
         img = (img - img.min()) / (img.max() - img.min())
         img = img * 2 - 1
-        
+
         if self.include_mask:
             mask = np.load(mask_file)
             mask = torch.from_numpy(mask.copy())
             mask = mask.unsqueeze(0)
             label = 1 if mask.sum() > 0 else 0
-        
+
         if self.include_segmentation:
             img_seg = np.load(segmentation_file)
             # range normalization to [-1, 1]
             img_seg = (img_seg - img_seg.min()) / (img_seg.max() - img_seg.min())
-            img_seg = img_seg * 2 - 1
             img_seg = torch.from_numpy(img_seg.copy()).float()
             img_seg = img_seg.unsqueeze(0)
 
@@ -60,7 +61,9 @@ class LIDC2DDataset(Dataset):
         if self.transforms is not None:
             # Apply additional transformations if provided
             imageout = self.transforms(imageout)
-        out = {'data': imageout}
+        out = {}
+        if self.include_origin_image:
+            out['data'] = imageout
         if self.include_mask:
             out['mask'] = mask
             out['label'] = label
@@ -105,6 +108,6 @@ if __name__ == '__main__':
     torch.clamp(img_seg, 0, 255)
     img_seg = img_seg.cpu().numpy().astype(np.uint8)
     import cv2
-    img  = np.concatenate((image, mask, img_seg), axis=2)
+    img = np.concatenate((image, mask, img_seg), axis=2)
     print(img[0].shape)
     cv2.imwrite("img.png", img[0])

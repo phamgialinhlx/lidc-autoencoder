@@ -1,0 +1,66 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=vq_gan_3d
+
+
+defaults:
+  - override /data: lidc2d
+  - override /model: multihead_ae_2d
+  - override /callbacks: multihead_ae_2d
+  - override /trainer: default
+  - override /logger: wandb
+
+tags: ["autoencoder", "vqgan_3d", "multihead", "lidc"]
+task_name: "train_autoencoder"
+
+model:
+  use_ema: False
+  use_same_optimizer: False
+  segmentation_decoder:
+    _target_: src.models.components.segmentation.encoder_unet2d.EncoderUNet2D
+    n_channels: 1
+    n_classes: 2
+  segmentation_criterion: 
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [1.0, 25.0]
+  classifier_head: !!null
+
+
+data:
+  data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
+  batch_size: 16
+  image_size: 128
+  train_val_test_split: [80, 10, 10]
+  nodules_only: True
+  include_origin_image: False
+  include_mask: True
+  include_segmentation: True
+  num_workers: 4
+  pin_memory: False
+
+logger: 
+  wandb:
+    name: "multihead_autoencoder_2d_seg"
+
+callbacks:
+  log_image:
+    frequency: 1
+    seg_head: True
+  log_metrics:
+    seg_head: True
+      
+  model_checkpoint:
+    monitor: "val/dice"
+    mode: "max"
+    save_last: True
+  
+  segmentation_metrics:
+    _target_: src.callbacks.segmentation_metrics.SegmentationMetrics
+    device: "cuda"
+    
+  classification_metrics: !!null
+
+trainer:
+  max_epochs: 1000
+  # precision: 16-mixed

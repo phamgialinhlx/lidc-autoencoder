@@ -1,0 +1,7 @@
+defaults:
+  - segmentation_metrics
+  - model_checkpoint
+  - model_summary
+  - rich_progress_bar
+  - mask2d_logger
+  - _self_

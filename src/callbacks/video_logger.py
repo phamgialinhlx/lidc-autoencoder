@@ -53,10 +53,10 @@ class VideoLogger(Callback):
                   global_step, current_epoch):
         root = os.path.join(save_dir, "videos", split)
         # print(root)
-        #mean = videos.pop('mean_org')
-        #mean = mean[(None,)*4].swapaxes(0, -1)
-        #std = videos.pop('std_org')
-        #std = std[(None,)*4].swapaxes(0, -1)
+        # mean = videos.pop('mean_org')
+        # mean = mean[(None,)*4].swapaxes(0, -1)
+        # std = videos.pop('std_org')
+        # std = std[(None,)*4].swapaxes(0, -1)
         grids = []
         for k in videos:
             videos[k] = (videos[k] + 1.0) * 127.5  # std + mean
@@ -67,7 +67,7 @@ class VideoLogger(Callback):
                 k,
                 global_step,
                 current_epoch,
-                )
+            )
             path = os.path.join(root, filename)
             os.makedirs(os.path.split(path)[0], exist_ok=True)
             fname = video_grid(grid, path, save_local=True)

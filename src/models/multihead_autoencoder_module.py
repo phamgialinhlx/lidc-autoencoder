@@ -155,7 +155,7 @@ class MultiheadVQGAN(LightningModule):
             print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
 
         # self.dice = Dice(ignore_index=0)
-        
+
     @contextmanager
     def ema_scope(self, context=None):
         if self.use_ema:
@@ -422,7 +422,7 @@ class MultiheadVQGAN(LightningModule):
         # B, C, T, W, H = seg_preds.shape
         # self.dice(seg_preds.view(B, -1).to(self.device), seg_targets.to(self.device).view(B, -1))
         # self.log('val/module_dice', self.dice.compute(), on_step=False, on_epoch=True, prog_bar=False)
-        
+
         self.log('val/recon_loss', recon_loss, prog_bar=True)
         self.log('val/perceptual_loss', perceptual_loss, prog_bar=True)
         self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)

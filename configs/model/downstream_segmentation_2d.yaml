@@ -1,0 +1,28 @@
+_target_: src.models.ds_segmentation_module.DownstreamSegmentationModule
+
+defaults:
+  - criterion: bce_lovasz.yaml
+
+net:
+  _target_: src.models.components.segmentation.encoder_unet2d.EncoderUNet2D
+  n_channels: 1
+  n_classes: 2
+  
+autoencoder_path: ""
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.01
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+# loss_weight: [0.02, 1.0]
+# compile model for faster training with pytorch 2.0
+# compile: false

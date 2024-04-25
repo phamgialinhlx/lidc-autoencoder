@@ -1,22 +1,25 @@
 import rootutils
+
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-from typing import Any, List
-from contextlib import contextmanager
 import gc
+from contextlib import contextmanager
+from typing import Any, List
+
 import hydra
 import torch
-from omegaconf import DictConfig
+import torch.nn.functional as F
 from lightning import LightningModule
+from omegaconf import DictConfig
 from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 
 from src.models.components.loss_function.lossbinary import LossBinary
 from src.models.components.loss_function.lovasz_loss import BCE_Lovasz
-from src.models.utils.autoencoder import load_autoencoder_seg_head
-import torch.nn.functional as F
+from src.models.utils.autoencoder import load_encoder
 from src.utils.ema import LitEma
 
-class SegmentationAEModule(LightningModule):
+
+class DownstreamSegmentationModule(LightningModule):
     def __init__(
         self,
         net: torch.nn.Module,
@@ -33,7 +36,7 @@ class SegmentationAEModule(LightningModule):
         self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
 
         self.net = net
-        self.autoencoder = load_autoencoder_seg_head(autoencoder_path)
+        self.encoder = load_encoder(autoencoder_path)
 
         # loss function
         self.criterion = criterion
@@ -64,14 +67,9 @@ class SegmentationAEModule(LightningModule):
                 if context is not None:
                     print(f"{context}: Restored training weights")
 
-    def model_step(self, batch: Any):
-        x = batch['data']
-        x = self.autoencoder(x)
-        x[x < -1.0] = -1.0
-        x[x > 1.0] = 1.0
-        x = (x + 1.0) * 127.5
+    def forward_segmentation(self, batch, key="segmentation"):
+        x = batch[key]
         y = batch['mask'].long()
-        label = batch['label']
         if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
@@ -79,11 +77,10 @@ class SegmentationAEModule(LightningModule):
                 BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
-
+            BCE_pos_weight = torch.FloatTensor([50.0]).to(device=self.device)
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
-        # from IPython import embed; embed()
-        logits = self.forward(x)
+        logits = self.net(self.encoder, x)
         if self.net.n_classes == 2:
             loss = self.criterion(logits, y.squeeze(1))
             preds = torch.argmax(logits, dim=1).unsqueeze(0)
@@ -92,13 +89,15 @@ class SegmentationAEModule(LightningModule):
             preds = torch.sigmoid(logits)
             preds[preds >= 0.5] = 1
             preds[preds < 0.5] = 0
-        # from IPython import embed; embed()
         # Code to try to fix CUDA out of memory issues
         del x
         gc.collect()
         torch.cuda.empty_cache()
 
         return loss, preds, y
+
+    def model_step(self, batch, key="segmentation"):
+        return self.forward_segmentation(batch, key)
 
     def training_step(self, batch: Any, batch_idx: int):
         seg_loss, seg_preds, seg_targets = self.model_step(batch)
@@ -113,9 +112,6 @@ class SegmentationAEModule(LightningModule):
 
         # update and log metrics
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
-
-    def forward_segmentation(self, batch):
-        return self.model_step(batch)
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

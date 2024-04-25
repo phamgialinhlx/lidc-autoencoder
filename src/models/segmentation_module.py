@@ -54,8 +54,6 @@ class SegmentationModule(LightningModule):
     def model_step(self, batch: Any):
         x = batch['segmentation']
         y = batch['mask'].long()
-        # from IPython import embed; embed()
-        label = batch['label']
         if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
@@ -83,10 +81,10 @@ class SegmentationModule(LightningModule):
         torch.cuda.empty_cache()
 
         return loss, preds, y
-    
+
     def forward_segmentation(self, batch):
         return self.model_step(batch)
-    
+
     def training_step(self, batch: Any, batch_idx: int):
         seg_loss, seg_preds, seg_targets = self.model_step(batch)
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}

@@ -1,5 +1,6 @@
 from src.models.vq_gan_3d_module import VQGAN
 from src.models.vq_gan_3d_seg_head import VQGANSegHead
+from src.models.vq_gan_2d_seg_module import VQGANSeg
 from torch import nn
 from IPython import embed
 
@@ -45,3 +46,19 @@ def load_autoencoder_seg_head(ckpt_path, map_location="cuda", disable_decoder=Fa
         ae.eval()
         ae.freeze()
     return Autoencoder(ae.pre_vq_conv, ae.post_vq_conv, ae.encoder, ae.decoder, ae.codebook)
+
+
+def load_encoder(ckpt_path, map_location="cuda", disable_decoder=False, eval=False):
+    try:
+        ae = VQGANSeg.load_from_checkpoint(checkpoint_path=ckpt_path, map_location=map_location)
+        if ae.use_ema:
+            ae.model_ema.store(ae.parameters())
+            ae.model_ema.copy_to(ae)
+        if disable_decoder:
+            ae.decoder = None
+    except Exception as e:
+        print(f"Failed to load autoencoder from {ckpt_path}: {e}")
+    if eval:
+        ae.eval()
+        ae.freeze()
+    return ae.encoder

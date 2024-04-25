@@ -6,7 +6,7 @@
 
 defaults:
   - override /data: lidc2d
-  - override /model: vq_gan_2d_seg_head
+  - override /model: vq_gan_2d_seg
   - override /callbacks: autoencoder2d
   - override /trainer: default
   - override /logger: wandb
@@ -19,39 +19,16 @@ data:
   batch_size: 16
   image_size: 128
   train_val_test_split: [80, 10, 10]
-  nodules_only: False
+  nodules_only: True
   include_mask: False
+  include_origin_image: False
   include_segmentation: True
   num_workers: 4
   pin_memory: False
 
-model:
-  loss: 
-    _target_: src.models.components.vq_gan_2d.losses.vqperceptual.VQLPIPSWithDiscriminator
-    disc_start: 1
-    codebook_weight: 1.0
-    disc_num_layers: 2
-    disc_in_channels: 1
-    disc_weight: 0.6
-    disc_conditional: false
-    n_classes: 1
-
-  autoencoderconfig:
-    channels: 128
-    channel_multipliers: [1, 1, 2, 4]
-    n_resnet_blocks: 2
-    img_channels: 1
-    z_channels: 16
-    double_z: False
-    resolution: 128
-    attn_resolutions:
-    - 16
-    out_img_size: 16
-    out_channels: 16
-
 logger: 
   wandb:
-    name: "vq_gan_2d_seg_head"
+    name: "vq_gan_2d_seg"
 
 callbacks:
   log_image:

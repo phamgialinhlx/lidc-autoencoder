@@ -56,16 +56,16 @@ class SegmentationMetrics(Callback):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
-        B, C, T, W, H = preds.shape
+        B = preds.shape[0]
         self.train_loss(loss.to(self.device))
         self.train_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
         self.train_dice(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
-        
+
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
-        B, C, T, W, H = preds.shape
+        B = preds.shape[0]
         self.val_loss(loss.to(self.device))
         self.val_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
 
@@ -75,7 +75,7 @@ class SegmentationMetrics(Callback):
         loss = outputs["seg_loss"]
         preds = outputs["seg_preds"]
         targets = batch["mask"].long()
-        B, C, T, W, H = preds.shape
+        B = preds.shape[0]
         self.test_loss(loss.to(self.device))
         self.test_jaccard(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))
         self.test_dice(preds.view(B, -1).to(self.device), targets.to(self.device).view(B, -1))

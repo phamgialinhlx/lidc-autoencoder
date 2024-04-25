@@ -1,11 +1,17 @@
+import rootutils
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
+"""Adapted from https://github.com/milesial/Pytorch-UNet/tree/master/unet"""
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-class UNetPlusPlus3D(nn.Module):
-    def __init__(self, in_channels, base_channels, n_classes, number_unet, 
-                 conv_layer, norm_layer, activate_layer, transpconv_layer, 
+
+class EncoderUNetPlusPlus2D(nn.Module):
+    def __init__(self, in_channels, base_channels, n_classes, number_unet,
+                 conv_layer, norm_layer, activate_layer, transpconv_layer,
                  conv_kwargs, norm_kwargs, activate_kwargs, transpconv_kwargs, **kwargs):
-        super(UNetPlusPlus3D, self).__init__()
+        super(EncoderUNetPlusPlus2D, self).__init__()
         self.n_classes = n_classes
         # number of unet
         self.number_unet = number_unet
@@ -27,7 +33,6 @@ class UNetPlusPlus3D(nn.Module):
         # parameters of transposed convolution layer
         self.transpconv_kwargs = transpconv_kwargs
 
-
         # input convolution layer to base_channels 
         self.first_conv = self.get_conv_block(in_channels, base_channels, have_pool=False)
 
@@ -37,47 +42,66 @@ class UNetPlusPlus3D(nn.Module):
         self.up_modules = [[None] * (i + 1) for i in range(number_unet)]
         # up convolution modules
         self.up_conv_modules = [[None] * (i + 1) for i in range(number_unet)]
-        
-       
+
         # # number of channels at each level
         self.channels = [base_channels] + [base_channels * (2 ** (i + 1)) for i in range(number_unet)]
-            
+
         # initial modules for unetplusplus
         for i in range(number_unet):
             # i-th unet
 
             # i-th down convolution layer of all unets
+            # if i != 0 and i != 1:
             self.down_conv_modules[i] = self.get_conv_block(self.channels[i], self.channels[i + 1])
 
             # up layers of i-th unet
             for j in range(i + 1):
                 # sum of channels after concat
                 in_channels_conv = (j + 2) * self.channels[i - j]
-                
+
                 # j-th up layer of i-th unet
                 self.up_modules[i][j], self.up_conv_modules[i][j] = \
-                    self.get_up_block(self.channels[i + 1 - j], self.channels[i - j], in_channels_conv)            
-        
+                    self.get_up_block(self.channels[i + 1 - j], self.channels[i - j], in_channels_conv)
+
             self.up_modules[i] = nn.ModuleList(self.up_modules[i])
             self.up_conv_modules[i] = nn.ModuleList(self.up_conv_modules[i])
-        
+
         self.down_conv_modules = nn.ModuleList(self.down_conv_modules)
         self.up_modules = nn.ModuleList(self.up_modules)
         self.up_conv_modules = nn.ModuleList(self.up_conv_modules)
-        
+
         # output convolution to n_classes
-        self.output_conv = nn.Conv3d(base_channels, n_classes, kernel_size=1, stride=1, padding=0, bias=False)
-    
-    def forward(self, input):
+        self.output_conv = nn.Conv2d(base_channels, n_classes, kernel_size=1, stride=1, padding=0, bias=False)
+
+    def forward(self, encoder, input):
         x = [[None] * (i + 1) for i in range(self.number_unet + 1)]
-        
-        # input convolution layer to base_channels 
-        x[0][0] = self.first_conv(input)
-        
+        # input convolution layer to base_channels
+        x[0][0] = encoder.conv_first(input)
+        hs = [x[0][0]]
+        x_out = [x[0][0]]
+        for i_level in range(encoder.num_resolutions):
+            for i_block in range(encoder.num_res_blocks):
+                h = encoder.down[i_level].block[i_block](hs[-1])
+                if len(encoder.down[i_level].attn) > 0:
+                    h = encoder.down[i_level].attn[i_block](h)
+                hs.append(h)
+            x_out.append(hs[-1])
+            if i_level != encoder.num_resolutions - 1:
+                hs.append(encoder.down[i_level].downsample(hs[-1]))
+        x1, _, x2, _, x3 = x_out
+        # for h in hs:
+        #     print(h.shape)
+        # print("-------------")
+        # for h in x_out:
+        #     print(h.shape)
         for i in range(self.number_unet):
             # i-th down layer of all unets
-            x[i + 1][0] = self.down_conv_modules[i](x[i][0])
-            
+            if i == 0:
+                x[i + 1][0] = x2
+            # elif i == 1:
+            #     x[i + 1][0] = x3
+            else:
+                x[i + 1][0] = self.down_conv_modules[i](x[i][0])
             # up layers of i-th unet
             for j in range(i + 1):
                 # j-th up layer of i-th unet
@@ -86,19 +110,19 @@ class UNetPlusPlus3D(nn.Module):
                 cat_elements = [up_element]
                 for k in range(j + 1):
                     cat_elements.append(x[i - k][j - k])
-                
+
                 # up convolution after concat
                 x[i + 1][j + 1] = self.up_conv_modules[i][j](torch.cat(cat_elements, dim=1))
 
         output = self.output_conv(x[self.number_unet][self.number_unet])
-        return output        
-                
+        return output
+
     def get_conv_block(self, in_channels, out_channels, have_pool=True):
         if not have_pool:
             stride = 1
         else:
             stride = 2
-            
+
         return nn.Sequential(
             self.conv_layer(in_channels, out_channels, stride = stride, **self.conv_kwargs),
             self.norm_layer(out_channels, **self.norm_kwargs),
@@ -107,7 +131,7 @@ class UNetPlusPlus3D(nn.Module):
             self.norm_layer(out_channels, **self.norm_kwargs),
             self.activate_layer(**self.activate_kwargs),
         )
-    
+
     def get_up_block(self, in_channels, out_channels, in_channels_conv):
         up = self.transpconv_layer(in_channels, out_channels, **self.transpconv_kwargs)
         up_conv = nn.Sequential(
@@ -121,7 +145,7 @@ if __name__ == "__main__":
     # Adjust configuration for 3D data accordingly
     config = {
         "in_channels": 1,
-        "base_channels": 32,
+        "base_channels": 16,
         "n_classes": 1,
         "number_unet": 4,
         "conv_layer": "Conv3d",
@@ -134,7 +158,7 @@ if __name__ == "__main__":
         },
         "norm_kwargs": {
             "eps": 1e-05,
-            "affine": True    
+            "affine": True
         },
         "activate_kwargs": {
             "negative_slope": 0.01,
@@ -148,7 +172,7 @@ if __name__ == "__main__":
     }
 
     # Instantiate the model
-    model = UNetPlusPlus3D(**config)
+    model = EncoderUNetPlusPlus2D(**config)
 
     # Example input
     x = torch.randn(1, 1, 128, 128, 128)  # Adjust dimensions for your 3D data

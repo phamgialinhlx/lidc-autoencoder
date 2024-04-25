@@ -20,6 +20,7 @@ class LIDC2DDataModule(LightningDataModule):
         image_size: int = 128,
         train_val_test_split: Tuple[int, int, int] = (80, 10, 10),
         nodules_only: bool = False,
+        include_origin_image: bool = True,
         include_mask: bool = False,
         include_segmentation: bool = False,
         num_workers: int = 0,
@@ -78,9 +79,10 @@ class LIDC2DDataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             dataset = LIDC2DDataset(
-                root_dir=self.hparams.data_dir, 
-                transforms=self.transforms, 
+                root_dir=self.hparams.data_dir,
+                transforms=self.transforms,
                 nodules_only=self.hparams.nodules_only,
+                include_origin_image=self.hparams.include_origin_image,
                 include_mask=self.hparams.include_mask,
                 include_segmentation=self.hparams.include_segmentation
             )
@@ -196,3 +198,4 @@ def main(cfg: DictConfig):
 
 if __name__ == "__main__":
     main()
+
