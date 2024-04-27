@@ -54,7 +54,7 @@ model:
   autoencoder_path: "./outputs/vq_gan_2d_seg2/checkpoints/epoch_080.ckpt"
   criterion:
     _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1.0, 50.0]
+    weight: [1.0, 25.0]
   scheduler: null
 
 logger: 
@@ -72,4 +72,4 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-  # precision: 16-mixed
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-04-27_12-52-53/lung-thesis/1jzhr05l/checkpoints/last.ckpt"

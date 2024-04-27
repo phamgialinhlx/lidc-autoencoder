@@ -50,26 +50,46 @@ class LIDC_IDRI_Dataset(Dataset):
         return paths 
 
     def __getitem__(self, index):
-        image, mask = self.file_list[index]
+        f_image, f_mask = self.file_list[index]
 
-        image = np.load(image)
-        mask = np.load(mask).astype(np.int8)
+        image = np.load(f_image)
+        mask = np.load(f_mask).astype(np.int8)
         transformed = self.transforms(image=image, mask=mask)
         image = transformed["image"]
         mask = transformed["mask"]
         image = image.to(torch.float)
         mask = mask.unsqueeze(0).to(torch.float)
-
+        # if image.min() - image.max() == 0:
+            # print(f_image)
         return {
             'segmentation': image,
             'mask': mask
         }
 
     def _normalize_image(self, image):
-        min_val = np.min(image)
+        min_val = np.min()
         max_val = np.max(image)
 
         if max_val - min_val > 0:
             image = (image - min_val) / (max_val - min_val)
 
         return image
+
+if __name__ == "__main__":
+    file_nodule_list = []
+    file_clean_list = []
+
+    # get full path of each nodule file
+    for root, _, files in os.walk("/data/hpc/pgl/data/Image"):
+        for file in files:
+            if file.endswith(".npy"):
+                dicom_path = os.path.join(root, file)
+                file_nodule_list.append(dicom_path)
+
+    ds = LIDC_IDRI_Dataset(
+        file_nodule_list,
+        file_clean_list, 
+        "all"
+    )
+    for data in ds:
+        a = 0

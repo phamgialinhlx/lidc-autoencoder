@@ -38,6 +38,7 @@ class EncoderUNetPlusPlus2D(nn.Module):
 
         # down convolution modules
         self.down_conv_modules = [None] * number_unet
+        self.norm_act_modules = [None] * number_unet
         # up convolution modules
         self.up_modules = [[None] * (i + 1) for i in range(number_unet)]
         # up convolution modules
@@ -53,7 +54,9 @@ class EncoderUNetPlusPlus2D(nn.Module):
             # i-th down convolution layer of all unets
             # if i != 0 and i != 1:
             self.down_conv_modules[i] = self.get_conv_block(self.channels[i], self.channels[i + 1])
-
+            # else:
+            if i == 0 or i == 1:
+                self.norm_act_modules[i] = self.norm_act(self.channels[i + 1]).to("cuda")
             # up layers of i-th unet
             for j in range(i + 1):
                 # sum of channels after concat
@@ -88,6 +91,7 @@ class EncoderUNetPlusPlus2D(nn.Module):
             x_out.append(hs[-1])
             if i_level != encoder.num_resolutions - 1:
                 hs.append(encoder.down[i_level].downsample(hs[-1]))
+
         x1, _, x2, x3 = x_out
         # for h in hs:
         #     print(h.shape)
@@ -97,9 +101,9 @@ class EncoderUNetPlusPlus2D(nn.Module):
         for i in range(self.number_unet):
             # i-th down layer of all unets
             if i == 0:
-                x[i + 1][0] = x2
+                x[i + 1][0] = self.norm_act_modules[i](x2)
             elif i == 1:
-                x[i + 1][0] = x3
+                x[i + 1][0] = self.norm_act_modules[i](x3)
             else:
                 x[i + 1][0] = self.down_conv_modules[i](x[i][0])
             # up layers of i-th unet
@@ -131,7 +135,11 @@ class EncoderUNetPlusPlus2D(nn.Module):
             self.norm_layer(out_channels, **self.norm_kwargs),
             self.activate_layer(**self.activate_kwargs),
         )
-
+    def norm_act(self, out_channels):
+        return nn.Sequential(
+            self.norm_layer(out_channels, **self.norm_kwargs),
+            self.activate_layer(**self.activate_kwargs),
+        )
     def get_up_block(self, in_channels, out_channels, in_channels_conv):
         up = self.transpconv_layer(in_channels, out_channels, **self.transpconv_kwargs)
         up_conv = nn.Sequential(
