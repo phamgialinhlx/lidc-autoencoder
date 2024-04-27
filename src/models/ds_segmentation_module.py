@@ -79,11 +79,12 @@ class DownstreamSegmentationModule(LightningModule):
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
             BCE_pos_weight = torch.FloatTensor([50.0]).to(device=self.device)
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
-
+        
         logits = self.net(self.encoder, x)
         if self.net.n_classes == 2:
             loss = self.criterion(logits, y.squeeze(1))
             preds = torch.argmax(logits, dim=1).unsqueeze(0)
+            preds = preds.permute(1, 0, 2, 3)
         else:
             loss = self.criterion(logits, y.float())
             preds = torch.sigmoid(logits)

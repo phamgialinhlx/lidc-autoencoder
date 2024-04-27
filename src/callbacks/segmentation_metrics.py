@@ -97,7 +97,7 @@ class SegmentationMetrics(Callback):
             pl_module.log("val/jaccard_best", self.val_metric_best_1, on_step=False, on_epoch=True, prog_bar=False)
             pl_module.log("val/dice_best", self.val_metric_best_2, on_step=False, on_epoch=True, prog_bar=False)
 
-            if trainer.testing:
-                pl_module.log("test/seg_loss", self.test_loss, metric_attribute="test_loss", on_step=False, on_epoch=True, prog_bar=True)
-                pl_module.log("test/jaccard", self.test_jaccard.compute(), on_step=False, on_epoch=True, prog_bar=False)
-                pl_module.log("test/dice", self.test_dice.compute(), on_step=False, on_epoch=True, prog_bar=False)
+    def on_test_epoch_end(self, trainer, pl_module):
+        pl_module.log("test/seg_loss", self.test_loss, metric_attribute="test_loss", on_step=False, on_epoch=True, prog_bar=True)
+        pl_module.log("test/jaccard", self.test_jaccard.compute(), on_step=False, on_epoch=True, prog_bar=False)
+        pl_module.log("test/dice", self.test_dice.compute(), on_step=False, on_epoch=True, prog_bar=False)

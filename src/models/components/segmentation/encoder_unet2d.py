@@ -65,7 +65,7 @@ class EncoderUNet2D(nn.Module):
             if i_level != encoder.num_resolutions - 1:
                 hs.append(encoder.down[i_level].downsample(hs[-1]))
             x_out.append(hs[-1])
-        x1, _, x2, _, x3 = x_out
+        x1, _, x2, x3 = x_out
         x4 = self.down3(x3)
         x5 = self.down4(x4)
         x = self.up1(x5, x4)

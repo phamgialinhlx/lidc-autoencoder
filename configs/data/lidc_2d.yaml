@@ -1,39 +1,39 @@
 _target_: src.data.LIDC_datamodule.LIDCDataModule
-nodule_dir: /work/hpc/pgl/LIDC-IDRI-Preprocessing/segment_data/Image
-clean_dir: /work/hpc/pgl/LIDC-IDRI-Preprocessing/segment_data/Clean/Image
+nodule_dir: /data/hpc/pgl/data/Image
+clean_dir: /data/hpc/pgl/data/Clean/Image
 train_val_test_split: [8, 1, 1]
 batch_size: 16
-num_workers: 0
+num_workers: 4
 pin_memory: True
 num_nodule: 13900
 num_clean: 6880
-img_size: 256
-transforms:
-  _target_: albumentations.Compose
-  transforms:
-    # - _target_: albumentations.ShiftScaleRotate
-    #   shift_limit: 0.05
-    #   scale_limit: 0.05
-    #   rotate_limit: 15
-    #   p: 0.15
-    # - _target_: albumentations.Affine
-    #   translate_percent: [-0.1, 0.1]
-    #   rotate: [-15, 15]
-    #   shear: [-15, 15]
-    #   p: 0.3
-    # - _target_: albumentations.RandomBrightnessContrast
-    #   p: 0.15
-    # - _target_: albumentations.HorizontalFlip
-    #   p: 0.15
-    # - _target_: albumentations.RandomRotate90
-    #   p: 0.5
-    # - _target_: albumentations.ElasticTransform
-    #   alpha: 1.1
-    #   alpha_affine: 0.5
-    #   sigma: 5
-    #   p: 0.15
-    - _target_: albumentations.Resize
-      height: 128
-      width: 128
-    - _target_: albumentations.pytorch.transforms.ToTensorV2
+img_size: 128
+# transforms:
+#   _target_: albumentations.Compose
+#   transforms:
+#     # - _target_: albumentations.ShiftScaleRotate
+#     #   shift_limit: 0.05
+#     #   scale_limit: 0.05
+#     #   rotate_limit: 15
+#     #   p: 0.15
+#     # - _target_: albumentations.Affine
+#     #   translate_percent: [-0.1, 0.1]
+#     #   rotate: [-15, 15]
+#     #   shear: [-15, 15]
+#     #   p: 0.3
+#     # - _target_: albumentations.RandomBrightnessContrast
+#     #   p: 0.15
+#     # - _target_: albumentations.HorizontalFlip
+#     #   p: 0.15
+#     # - _target_: albumentations.RandomRotate90
+#     #   p: 0.5
+#     # - _target_: albumentations.ElasticTransform
+#     #   alpha: 1.1
+#     #   alpha_affine: 0.5
+#     #   sigma: 5
+#     #   p: 0.15
+#     - _target_: albumentations.Resize
+#       height: 128
+#       width: 128
+#     - _target_: albumentations.pytorch.transforms.ToTensorV2
   

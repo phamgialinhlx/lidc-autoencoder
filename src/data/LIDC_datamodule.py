@@ -51,9 +51,9 @@ class LIDCDataModule(LightningDataModule):
                     dicom_path = os.path.join(root, file)
                     file_clean_list.append(dicom_path)
 
-        file_nodule_list = file_nodule_list[:self.hparams.num_nodule]
+        # file_nodule_list = file_nodule_list[:self.hparams.num_nodule]
 
-        file_clean_list = file_clean_list[:self.hparams.num_clean]
+        # file_clean_list = file_clean_list[:self.hparams.num_clean]
 
         nodule_train, nodule_val, nodule_test = self.split_data(file_nodule_list, self.hparams.train_val_test_split)
 

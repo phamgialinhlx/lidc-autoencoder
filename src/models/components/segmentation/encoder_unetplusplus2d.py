@@ -88,7 +88,7 @@ class EncoderUNetPlusPlus2D(nn.Module):
             x_out.append(hs[-1])
             if i_level != encoder.num_resolutions - 1:
                 hs.append(encoder.down[i_level].downsample(hs[-1]))
-        x1, _, x2, _, x3 = x_out
+        x1, _, x2, x3 = x_out
         # for h in hs:
         #     print(h.shape)
         # print("-------------")
@@ -98,8 +98,8 @@ class EncoderUNetPlusPlus2D(nn.Module):
             # i-th down layer of all unets
             if i == 0:
                 x[i + 1][0] = x2
-            # elif i == 1:
-            #     x[i + 1][0] = x3
+            elif i == 1:
+                x[i + 1][0] = x3
             else:
                 x[i + 1][0] = self.down_conv_modules[i](x[i][0])
             # up layers of i-th unet

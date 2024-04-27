@@ -3,4 +3,5 @@
         "--max-line-length=120",
         "--ignore=E402,F841,F401,E302,E305,E128,E251,E261,E501,E502",
     ],
+    "pylint.args": ["--disable=C0111,W0611", "--max-line-length=120"]
 }

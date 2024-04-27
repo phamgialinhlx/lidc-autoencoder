@@ -3,8 +3,8 @@ import torch.nn as nn
 
 
 class UNetPlusPlus(nn.Module):
-    def __init__(self, in_channels, base_channels, n_classes, number_unet, 
-                 conv_layer, norm_layer, activate_layer, transpconv_layer, 
+    def __init__(self, in_channels, base_channels, n_classes, number_unet,
+                 conv_layer, norm_layer, activate_layer, transpconv_layer,
                  conv_kwargs, norm_kwargs, activate_kwargs, transpconv_kwargs):
         super(UNetPlusPlus, self).__init__()
         self.n_classes = n_classes

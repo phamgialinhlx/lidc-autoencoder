@@ -3,6 +3,7 @@ import torch
 from lightning.pytorch.callbacks import Callback
 from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 from torchvision.utils import make_grid
+import random
 import wandb
 
 class Mask2DLogger(Callback):
@@ -13,18 +14,23 @@ class Mask2DLogger(Callback):
         self.last_output = None
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
-        self.last_batch = batch
-        self.last_output = outputs
+        if self.last_batch is None:
+            self.last_batch = batch
+            self.last_output = outputs
+        elif random.randint(0, 9) > 8 and batch["mask"].sum() > 0:
+            self.last_batch = batch
+            self.last_output = outputs
 
     def log_img(self, trainer, outputs, batch):
         preds = outputs["seg_preds"].float()
-        preds = preds.permute(1, 0, 2, 3)
+        # preds = preds.permute(1, 0, 2, 3)
 
         nrows = math.ceil(math.sqrt(preds.shape[0]))
         value_range = (0, 1)
         seg_img = make_grid(
-            batch["segmentation"], nrow=nrows, normalize=False, value_range=value_range
+            batch["segmentation"], nrow=nrows, normalize=True, value_range=value_range
         )
+
         targets = make_grid(
             batch["mask"], nrow=nrows, normalize=False, value_range=value_range
         )
