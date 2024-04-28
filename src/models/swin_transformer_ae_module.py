@@ -90,7 +90,7 @@ class SwinVQGAN(LightningModule):
         self.quant_conv_module = nn.Sequential(
             torch.nn.ConvTranspose2d(encoderconfig.feature_size * 16, encoderconfig.feature_size * 8, kernel_size=2, stride=2),
             torch.nn.ConvTranspose2d(encoderconfig.feature_size * 8, encoderconfig.feature_size * 4, kernel_size=2, stride=2),
-            torch.nn.Conv2d(encoderconfig.feature_size * 4, embed_dim, 1)
+            torch.nn.ConvTranspose2d(encoderconfig.feature_size * 4, embed_dim, kernel_size=2, stride=2),
         )
         self.quant_conv = torch.nn.Conv2d(self.hparams.autoencoderconfig["z_channels"], embed_dim, 1)
         self.post_quant_conv = torch.nn.Conv2d(embed_dim, self.hparams.autoencoderconfig["z_channels"], 1)
@@ -152,8 +152,8 @@ class SwinVQGAN(LightningModule):
             self.model_ema(self)
 
     def encode(self, x):
-        h = self.encoder(x)
-        h = self.quant_conv_module(h)[-1]
+        h = self.encoder(x)[-1]
+        h = self.quant_conv_module(h)
         quant, emb_loss, info = self.quantize(h)
         return quant, emb_loss, info
 

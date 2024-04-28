@@ -29,7 +29,7 @@ loss:
 
 autoencoderconfig:
   channels: 64
-  channel_multipliers: [1, 2, 2, 4]
+  channel_multipliers: [1, 2, 4]
   n_resnet_blocks: 2
   img_channels: 1
   z_channels: 16
