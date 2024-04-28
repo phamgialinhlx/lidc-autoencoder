@@ -136,7 +136,8 @@ class SwinUNETR(nn.Module):
 
         if feature_size % 12 != 0:
             raise ValueError("feature_size should be divisible by 12.")
-
+        
+        self.out_channels = out_channels
         self.encoder1 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
             in_channels=in_channels,

@@ -193,8 +193,8 @@ class MultiheadSwinVQGAN(LightningModule):
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
 
-    def forward_segmentation(self, batch):
-        x = batch['segmentation']
+    def forward_segmentation(self, batch, key="segmentation"):
+        x = batch[key]
         y = batch['mask'].long()
         # label = batch['label']
         if isinstance(self.segmentation_criterion, (LossBinary, BCE_Lovasz)):
@@ -207,9 +207,10 @@ class MultiheadSwinVQGAN(LightningModule):
             self.segmentation_criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         logits = self.segmentation_decoder(self.encoder, x, self.encoder_normalize)
-        if self.segmentation_decoder.n_classes == 2:
+        if self.segmentation_decoder.out_channels == 2:
             loss = self.segmentation_criterion(logits, y.squeeze(1))
             preds = torch.argmax(logits, dim=1).unsqueeze(0)
+            preds = preds.permute(1, 0, 2, 3)
         else:
             loss = self.segmentation_criterion(logits, y.float())
             preds = torch.sigmoid(logits)
@@ -232,56 +233,64 @@ class MultiheadSwinVQGAN(LightningModule):
 
     def training_step(self, batch, batch_idx):
         x = batch['segmentation']
-        opt_list = self.optimizers()
-        opt_ae = opt_list[0]
-        opt_disc = opt_list[1]
+        xrec, qloss, ind = self(x, return_pred_indices=True)
 
-        if self.use_same_optimizer:
-            opt_ds = opt_list[2]
-        else:
-            if len(opt_list) == 3:
-                if self.segmentation_decoder is not None:
-                    opt_seg = opt_list[2]
-                else:
-                    opt_cls = opt_list[2]
-            elif len(opt_list) == 4:
-                opt_seg = opt_list[2]
-                opt_cls = opt_list[3]
+        opt_ae, opt_disc = self.optimizers()
 
-        # Train the autoencoder
+        # autoencode
+        aeloss, log_dict_ae = self.loss(
+            qloss,
+            x,
+            xrec,
+            0,
+            self.global_step,
+            last_layer=self.get_last_layer(),
+            split="train",
+            # predicted_indices=ind,
+        )
+        self.log_dict(
+            log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True
+        )
+        ds_loss = aeloss 
+        if self.segmentation_decoder is not None:
+            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch, key="segmentation")
+            ds_loss += seg_loss
+        if self.classifier_head is not None:
+            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch, key="segmentation")
+            ds_loss += cls_loss
+        
+
+        self.log("train/ds_loss", ds_loss, prog_bar=True,
+            logger=True, on_step=True, on_epoch=True)
+
         opt_ae.zero_grad()
-        recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(
-            x, optimizer_idx=0)
-        commitment_loss = vq_output['commitment_loss']
-        loss = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
-        self.manual_backward(loss)
+        if self.segmentation_decoder is not None and self.classifier_head is None:
+            self.manual_backward(aeloss + 10 * seg_loss)
+        elif self.segmentation_decoder is None and self.classifier_head is not None:
+            self.manual_backward(aeloss + 10 * cls_loss)
+        elif self.segmentation_decoder is not None and self.classifier_head is not None:
+            self.manual_backward(aeloss + 10 * seg_loss + 10 * cls_loss)
+        else:
+            self.manual_backward(aeloss)
         opt_ae.step()
 
-        # Train the discriminator
+        # discriminator
+        discloss, log_dict_disc = self.loss(
+            qloss,
+            x,
+            xrec,
+            1,
+            self.global_step,
+            last_layer=self.get_last_layer(),
+            split="train",
+        )
+        self.log_dict(
+            log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True
+        )
+
         opt_disc.zero_grad()
-        discloss = self.forward(x, optimizer_idx=1)
         self.manual_backward(discloss)
         opt_disc.step()
-        if self.use_same_optimizer:
-            opt_ds.zero_grad()
-            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
-            ds_loss = seg_loss + cls_loss
-            self.manual_backward(ds_loss)
-            opt_ds.step()
-            self.log("train/ds_loss", ds_loss, prog_bar=True,
-                     logger=True, on_step=True, on_epoch=True)
-        else:
-            if self.segmentation_decoder is not None:
-                opt_seg.zero_grad()
-                seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
-                self.manual_backward(seg_loss)
-                opt_seg.step()
-            if self.classifier_head is not None:
-                opt_cls.zero_grad()
-                cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
-                self.manual_backward(cls_loss)
-                opt_cls.step()
 
         if self.classifier_head is not None and self.segmentation_decoder is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
@@ -290,77 +299,55 @@ class MultiheadSwinVQGAN(LightningModule):
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
     def validation_step(self, batch, batch_idx, suffix=""):
-        x_seg = batch['segmentation']
-        with self.ema_scope():
-            xrec, qloss, ind = self(x_seg, return_pred_indices=True)
-            aeloss, log_dict_ae = self.loss(
-                qloss,
-                x_seg,
-                xrec,
-                0,
-                self.global_step,
-                last_layer=self.get_last_layer(),
-                split="val" + suffix,
-                # predicted_indices=ind,
-            )
-
-            discloss, log_dict_disc = self.loss(
-                qloss,
-                x_seg,
-                xrec,
-                1,
-                self.global_step,
-                last_layer=self.get_last_layer(),
-                split="val" + suffix,
-                # predicted_indices=ind,
-            )
-
-            self.log(f"val{suffix}/rec_loss", log_dict_ae[f"val{suffix}/rec_loss"])
-            self.log_dict(log_dict_ae)
-            self.log_dict(log_dict_disc)
+        if self.use_ema:
+            with self.ema_scope():
+                log_dict_ema = self._validation_step(batch, batch_idx)
+        else:
+            log_dict = self._validation_step(batch, batch_idx)
         if self.segmentation_decoder is not None:
-            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
+            seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch, key="segmentation")
         if self.classifier_head is not None:
-            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch)
-
+            cls_loss, cls_preds, cls_targets = self.forward_clasification(batch, key="segmentation")
         if self.segmentation_decoder is not None and self.classifier_head is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
                     "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
         elif self.classifier_head is None and self.segmentation_decoder is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
+    def _validation_step(self, batch, batch_idx, suffix=""):
+        x = batch['segmentation']
+        xrec, qloss, ind = self(x, return_pred_indices=True)
+        aeloss, log_dict_ae = self.loss(
+            qloss,
+            x,
+            xrec,
+            0,
+            self.global_step,
+            last_layer=self.get_last_layer(),
+            split="val" + suffix,
+            # predicted_indices=ind,
+        )
+
+        discloss, log_dict_disc = self.loss(
+            qloss,
+            x,
+            xrec,
+            1,
+            self.global_step,
+            last_layer=self.get_last_layer(),
+            split="val" + suffix,
+            # predicted_indices=ind,
+        )
+
+        self.log(f"val{suffix}/rec_loss", log_dict_ae[f"val{suffix}/rec_loss"])
+        self.log_dict(log_dict_ae)
+        self.log_dict(log_dict_disc)
+        return self.log_dict
 
     def test_step(self, batch, batch_idx, suffix=""):
-        x = batch['segmentation']  # TODO: batch['stft']
-
         with self.ema_scope():
-            xrec, qloss, ind = self(x, return_pred_indices=True)
-            aeloss, log_dict_ae = self.loss(
-                qloss,
-                x,
-                xrec,
-                0,
-                self.global_step,
-                last_layer=self.get_last_layer(),
-                split="test" + suffix,
-                # predicted_indices=ind,
-            )
+            log_dict = self._test_step(batch, batch_idx)
 
-            discloss, log_dict_disc = self.loss(
-                qloss,
-                x,
-                xrec,
-                1,
-                self.global_step,
-                last_layer=self.get_last_layer(),
-                split="test" + suffix,
-                # predicted_indices=ind,
-            )
-
-            self.log(f"test{suffix}/rec_loss", log_dict_ae[f"test{suffix}/rec_loss"])
-            self.log_dict(log_dict_ae)
-            self.log_dict(log_dict_disc)
-        
         if self.segmentation_decoder is not None:
             seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch)
         if self.classifier_head is not None:
@@ -371,41 +358,74 @@ class MultiheadSwinVQGAN(LightningModule):
                     "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
         elif self.classifier_head is None and self.segmentation_decoder is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
+
+    def _test_step(self, batch, batch_idx, suffix=""):
+        x = batch['segmentation']
+        xrec, qloss, ind = self(x, return_pred_indices=True)
+        aeloss, log_dict_ae = self.loss(
+            qloss,
+            x,
+            xrec,
+            0,
+            self.global_step,
+            last_layer=self.get_last_layer(),
+            split="test" + suffix,
+            # predicted_indices=ind,
+        )
+
+        discloss, log_dict_disc = self.loss(
+            qloss,
+            x,
+            xrec,
+            1,
+            self.global_step,
+            last_layer=self.get_last_layer(),
+            split="test" + suffix,
+            # predicted_indices=ind,
+        )
+
+        self.log(f"test{suffix}/rec_loss", log_dict_ae[f"test{suffix}/rec_loss"])
+        self.log_dict(log_dict_ae)
+        self.log_dict(log_dict_disc)
+        return self.log_dict
 
 
     def configure_optimizers(self):
         lr_d = self.learning_rate
         lr_g = self.lr_g_factor * self.learning_rate
+        
+        opt_params = list(self.encoder.parameters()) + list(self.decoder.parameters()) + list(self.quantize.parameters()) + list(self.quant_conv.parameters()) + list(self.post_quant_conv.parameters())
+        if self.segmentation_decoder is not None:
+            opt_params += list(self.segmentation_decoder.parameters())
+        if self.classifier_head is not None:
+            opt_params += list(self.classifier_head.parameters())
         opt_ae = torch.optim.Adam(
-            list(self.encoder.parameters())
-            + list(self.decoder.parameters())
-            + list(self.quantize.parameters())
-            + list(self.quant_conv.parameters())
-            + list(self.post_quant_conv.parameters()),
+            opt_params,
             lr=lr_g,
             betas=(0.5, 0.9),
         )
         opt_disc = torch.optim.Adam(
             self.loss.discriminator.parameters(), lr=lr_d, betas=(0.5, 0.9)
         )
-        opt_list = [opt_ae, opt_disc]
-        if self.use_same_optimizer:
-            opt_ds = torch.optim.Adam(list(self.segmentation_decoder.parameters()) + \
-                                      list(self.encoder.parameters()) + \
-                                      list(self.classifier_head.parameters()),
-                                      lr=0.001, betas=(0.5, 0.9))
-            opt_list.append(opt_ds)
-        else:
-            if self.segmentation_decoder is not None:
-                opt_seg = torch.optim.Adam(list(self.segmentation_decoder.parameters()) + \
-                                        list(self.encoder.parameters()), lr=0.01, betas=(0.5, 0.9))
-                opt_list.append(opt_seg)
-            if self.classifier_head is not None:
-                opt_cls = torch.optim.Adam(list(self.classifier_head.parameters()) + \
-                                        list(self.encoder.parameters()), lr=lr, betas=(0.5, 0.9))
-                opt_list.append(opt_cls)
 
-        return (opt_list, [])
+        if self.scheduler_config is not None:
+            scheduler = instantiate_from_config(self.scheduler_config)
+
+            print("Setting up LambdaLR scheduler...")
+            scheduler = [
+                {
+                    "scheduler": LambdaLR(opt_ae, lr_lambda=scheduler.schedule),
+                    "interval": "step",
+                    "frequency": 1,
+                },
+                {
+                    "scheduler": LambdaLR(opt_disc, lr_lambda=scheduler.schedule),
+                    "interval": "step",
+                    "frequency": 1,
+                },
+            ]
+            return [opt_ae, opt_disc], scheduler
+        return [opt_ae, opt_disc], []
 
     def get_last_layer(self):
         return self.decoder.conv_out.weight

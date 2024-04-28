@@ -19,7 +19,7 @@ class LIDC_IDRI_Dataset(Dataset):
         self.transforms = torchvision.transforms.Compose(
             [
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Resize((img_size, img_size)),
+                torchvision.transforms.Resize((img_size, img_size), antialias=True),
             ]
         )
         self.img_size = img_size

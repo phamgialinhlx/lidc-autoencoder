@@ -7,16 +7,16 @@
 defaults:
   - override /data: lidc_2d
   - override /model: multihead_swin_transformer_ae
-  - override /callbacks: autoencoder2d
+  - override /callbacks: multihead_ae_2d
   - override /trainer: default
   - override /logger: wandb
 
 tags: ["autoencoder", "vqgan_2d", "lidc2d"]
 task_name: "train_autoencoder"
 
-# data:
+data:
 #   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
-#   batch_size: 16
+  batch_size: 24
 #   image_size: 128
 #   train_val_test_split: [80, 10, 10]
 #   nodules_only: True
@@ -27,8 +27,11 @@ task_name: "train_autoencoder"
 #   pin_memory: False
 
 model:
+  encoderconfig:
+    feature_size: 36
   autoencoderconfig:
     channel_multipliers: [1, 2, 4]
+  # segmentation_decoder: !!null
   segmentation_decoder:
     _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
     img_size: 128
@@ -36,25 +39,39 @@ model:
     out_channels: 2
     use_checkpoint: True
     spatial_dims: 2
+    feature_size: 36
 
+  # segmentation_criterion: !!null
   segmentation_criterion: 
     _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1.0, 25.0]
+    weight: [1.0, 50.0]
 
 logger: 
   wandb:
     name: "multihead_swin_transformer_ae"
+    # id: 918ou1zg
 
 callbacks:
   log_image:
     frequency: 1
     seg_head: True
   log_metrics:
+    ssim:
+      _target_: torchmetrics.image.StructuralSimilarityIndexMeasure
+      data_range: 1.0
+    psnr:
+      _target_: torchmetrics.image.PeakSignalNoiseRatio
+      data_range: 1.0
     seg_head: True
   model_checkpoint:
     monitor: "val/ssim"
     mode: "max"
     save_last: True
+  classification_metrics: !!null
+  # segmentation_metrics: !!null
+  # mask2d_logger: !!null
 
 trainer:
   max_epochs: 1000
+
+# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_autoencoder/runs/2024-04-28_19-07-36/lung-thesis/918ou1zg/checkpoints/epoch=4-step=15570.ckpt"
