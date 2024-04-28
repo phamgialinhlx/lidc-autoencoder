@@ -39,7 +39,7 @@ model:
 logger: 
   wandb:
     name: "ds_unet2d_seg_dice_2"
-    id: ow5e1etu
+    id: 3g9xzk8z
 
 callbacks:
   model_checkpoint:
@@ -51,4 +51,4 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-  # precision: 16-mixed
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-04-28_00-43-21/lung-thesis/3g9xzk8z/checkpoints/last.ckpt"
