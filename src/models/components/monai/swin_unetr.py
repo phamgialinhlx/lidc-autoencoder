@@ -20,71 +20,112 @@ from monai.utils.deprecate_utils import deprecated_arg
 rearrange, _ = optional_import("einops", name="rearrange")
 
 
-class Encoder(nn.Module):
+class SwinEncoder(nn.Module):
+
+    patch_size: Final[int] = 2
+
     def __init__(
         self,
+        img_size: Sequence[int] | int,
+        in_channels: int,
+        out_channels: int,
+        depths: Sequence[int] = (2, 2, 2, 2),
+        num_heads: Sequence[int] = (3, 6, 12, 24),
+        feature_size: int = 24,
+        norm_name: tuple | str = "instance",
+        drop_rate: float = 0.0,
+        attn_drop_rate: float = 0.0,
+        dropout_path_rate: float = 0.0,
+        normalize: bool = True,
+        use_checkpoint: bool = False,
+        spatial_dims: int = 3,
+        downsample="merging",
+        use_v2=False,
     ):
+        super().__init__()
 
-    self.normalize = normalize
+        img_size = ensure_tuple_rep(img_size, spatial_dims)
+        patch_sizes = ensure_tuple_rep(self.patch_size, spatial_dims)
+        window_size = ensure_tuple_rep(7, spatial_dims)
+        self.normalize = normalize
 
-    self.swinViT = SwinTransformer(
-        in_chans=in_channels,
-        embed_dim=feature_size,
-        window_size=window_size,
-        patch_size=patch_sizes,
-        depths=depths,
-        num_heads=num_heads,
-        mlp_ratio=4.0,
-        qkv_bias=True,
-        drop_rate=drop_rate,
-        attn_drop_rate=attn_drop_rate,
-        drop_path_rate=dropout_path_rate,
-        norm_layer=nn.LayerNorm,
-        use_checkpoint=use_checkpoint,
-        spatial_dims=spatial_dims,
-        downsample=look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample,
-        use_v2=use_v2,
-    )
+        self.swinViT = SwinTransformer(
+            in_chans=in_channels,
+            embed_dim=feature_size,
+            window_size=window_size,
+            patch_size=patch_sizes,
+            depths=depths,
+            num_heads=num_heads,
+            mlp_ratio=4.0,
+            qkv_bias=True,
+            drop_rate=drop_rate,
+            attn_drop_rate=attn_drop_rate,
+            drop_path_rate=dropout_path_rate,
+            norm_layer=nn.LayerNorm,
+            use_checkpoint=use_checkpoint,
+            spatial_dims=spatial_dims,
+            downsample=look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample,
+            use_v2=use_v2,
+        )
 
-    self.encoder1 = UnetrBasicBlock(
-        spatial_dims=spatial_dims,
-        in_channels=in_channels,
-        out_channels=feature_size,
-        kernel_size=3,
-        stride=1,
-        norm_name=norm_name,
-        res_block=True,
-    )
+        self.encoder1 = UnetrBasicBlock(
+            spatial_dims=spatial_dims,
+            in_channels=in_channels,
+            out_channels=feature_size,
+            kernel_size=3,
+            stride=1,
+            norm_name=norm_name,
+            res_block=True,
+        )
 
-    self.encoder2 = UnetrBasicBlock(
-        spatial_dims=spatial_dims,
-        in_channels=feature_size,
-        out_channels=feature_size,
-        kernel_size=3,
-        stride=1,
-        norm_name=norm_name,
-        res_block=True,
-    )
+        self.encoder2 = UnetrBasicBlock(
+            spatial_dims=spatial_dims,
+            in_channels=feature_size,
+            out_channels=feature_size,
+            kernel_size=3,
+            stride=1,
+            norm_name=norm_name,
+            res_block=True,
+        )
 
-    self.encoder3 = UnetrBasicBlock(
-        spatial_dims=spatial_dims,
-        in_channels=2 * feature_size,
-        out_channels=2 * feature_size,
-        kernel_size=3,
-        stride=1,
-        norm_name=norm_name,
-        res_block=True,
-    )
+        self.encoder3 = UnetrBasicBlock(
+            spatial_dims=spatial_dims,
+            in_channels=2 * feature_size,
+            out_channels=2 * feature_size,
+            kernel_size=3,
+            stride=1,
+            norm_name=norm_name,
+            res_block=True,
+        )
 
-    self.encoder4 = UnetrBasicBlock(
-        spatial_dims=spatial_dims,
-        in_channels=4 * feature_size,
-        out_channels=4 * feature_size,
-        kernel_size=3,
-        stride=1,
-        norm_name=norm_name,
-        res_block=True,
-    )
+        self.encoder4 = UnetrBasicBlock(
+            spatial_dims=spatial_dims,
+            in_channels=4 * feature_size,
+            out_channels=4 * feature_size,
+            kernel_size=3,
+            stride=1,
+            norm_name=norm_name,
+            res_block=True,
+        )
+
+        self.encoder10 = UnetrBasicBlock(
+            spatial_dims=spatial_dims,
+            in_channels=16 * feature_size,
+            out_channels=16 * feature_size,
+            kernel_size=3,
+            stride=1,
+            norm_name=norm_name,
+            res_block=True,
+        )
+
+    def forward(self, x_in):
+        hidden_states_out = self.swin_encoder.swinViT(x_in, self.swin_encoder.normalize)
+        enc0 = self.swin_encoder.encoder1(x_in)
+        enc1 = self.swin_encoder.encoder2(hidden_states_out[0])
+        enc2 = self.swin_encoder.encoder3(hidden_states_out[1])
+        enc3 = self.swin_encoder.encoder4(hidden_states_out[2])
+        dec4 = self.swin_encoder.encoder4(hidden_states_out[4])
+        return dec4
 
 class SwinUNETR(nn.Module):
     """
@@ -178,66 +219,23 @@ class SwinUNETR(nn.Module):
 
         if feature_size % 12 != 0:
             raise ValueError("feature_size should be divisible by 12.")
-
-        self.normalize = normalize
-
-        self.swinViT = SwinTransformer(
-            in_chans=in_channels,
-            embed_dim=feature_size,
-            window_size=window_size,
-            patch_size=patch_sizes,
+        
+        self.swin_encoder = SwinEncoder(
+            img_size=img_size,
+            in_channels=in_channels,
+            out_channels=out_channels,
             depths=depths,
             num_heads=num_heads,
-            mlp_ratio=4.0,
-            qkv_bias=True,
+            feature_size=feature_size,
+            norm_name=norm_name,
             drop_rate=drop_rate,
             attn_drop_rate=attn_drop_rate,
-            drop_path_rate=dropout_path_rate,
-            norm_layer=nn.LayerNorm,
+            dropout_path_rate=dropout_path_rate,
+            normalize=normalize,
             use_checkpoint=use_checkpoint,
             spatial_dims=spatial_dims,
-            downsample=look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample,
+            downsample=downsample,
             use_v2=use_v2,
-        )
-
-        self.encoder1 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=in_channels,
-            out_channels=feature_size,
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
-        )
-
-        self.encoder2 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=feature_size,
-            out_channels=feature_size,
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
-        )
-
-        self.encoder3 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=2 * feature_size,
-            out_channels=2 * feature_size,
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
-        )
-
-        self.encoder4 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=4 * feature_size,
-            out_channels=4 * feature_size,
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
         )
 
         self.encoder10 = UnetrBasicBlock(
@@ -364,11 +362,11 @@ class SwinUNETR(nn.Module):
     def forward(self, x_in):
         if not torch.jit.is_scripting():
             self._check_input_size(x_in.shape[2:])
-        hidden_states_out = self.swinViT(x_in, self.normalize)
-        enc0 = self.encoder1(x_in)
-        enc1 = self.encoder2(hidden_states_out[0])
-        enc2 = self.encoder3(hidden_states_out[1])
-        enc3 = self.encoder4(hidden_states_out[2])
+        hidden_states_out = self.swin_encoder.swinViT(x_in, self.swin_encoder.normalize)
+        enc0 = self.swin_encoder.encoder1(x_in)
+        enc1 = self.swin_encoder.encoder2(hidden_states_out[0])
+        enc2 = self.swin_encoder.encoder3(hidden_states_out[1])
+        enc3 = self.swin_encoder.encoder4(hidden_states_out[2])
         dec4 = self.encoder10(hidden_states_out[4])
         dec3 = self.decoder5(dec4, hidden_states_out[3])
         dec2 = self.decoder4(dec3, enc3)
@@ -1172,7 +1170,28 @@ def filter_swinunetr(key, value):
         return None
 
 if __name__ == "__main__":
-    net = SwinUNETR(img_size=(96,96), in_channels=3, out_channels=2, use_checkpoint=True, spatial_dims=2)
-    img = torch.randn(1,3,96,96)
-    out = net(img)
-    print(out.shape)
+    net1 = SwinUNETR(img_size=(128,128), in_channels=1, out_channels=2, use_checkpoint=True, spatial_dims=2)
+    net = SwinEncoder(img_size=(128,128), in_channels=1, out_channels=2, use_checkpoint=True, spatial_dims=2)
+    x_in = torch.randn(1,1,128,128)
+    print(net1(x_in).shape)
+    hidden_states_out = net.swinViT(x_in, net.normalize)
+    print("length of hidden_states_out", len(hidden_states_out))
+    for i in range(len(hidden_states_out)):
+        print(hidden_states_out[i].shape)
+    enc0 = net.encoder1(x_in)
+    print(enc0.shape)
+    enc1 = net.encoder2(hidden_states_out[0])
+    print(enc1.shape)
+    enc2 = net.encoder3(hidden_states_out[1])
+    print(enc2.shape)
+    enc3 = net.encoder4(hidden_states_out[2])
+    print("hidden_states_out[2]", enc3.shape)
+    dec4 = net.encoder10(hidden_states_out[4])
+    print(dec4.shape)
+    print("hidden_states_out[4]", hidden_states_out[4].shape)
+    quant_conv1 = torch.nn.ConvTranspose2d(384, 192, kernel_size=2, stride=2)
+    quant1 = quant_conv1(hidden_states_out[4])
+    quant_conv2 = torch.nn.ConvTranspose2d(192, 96, kernel_size=2, stride=2)
+    quant2 = quant_conv2(quant1)
+    print("quant2", quant2.shape)
+    print(net1.swin_encoder.swinViT)
