@@ -10,6 +10,8 @@ from torch.optim.lr_scheduler import LambdaLR
 import numpy as np
 import hydra
 from omegaconf import DictConfig
+from typing_extensions import Final
+from monai.utils import ensure_tuple_rep, look_up_option, optional_import
 
 import rootutils
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -17,12 +19,17 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 from src.models.components.vq_gan_2d.diffusionmodules import Encoder, Decoder
 from src.models.components.vq_gan_2d.distributions import DiagonalGaussianDistribution
 from src.models.components.vq_gan_2d.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
+from src.models.components.monai.swin_unetr import SwinTransformer, MERGING_MODE
 from src.utils.ema import LitEma
 
-class VQGANSeg(LightningModule):
+class SwinVQGAN(LightningModule):
+
+    patch_size: Final[int] = 2
+
     def __init__(
         self,
         embed_dim,
+        encoderconfig,
         autoencoderconfig,
         loss,
         n_embed: int = 16384,
@@ -45,7 +52,32 @@ class VQGANSeg(LightningModule):
         self.embed_dim = embed_dim
         self.n_embed = n_embed
         self.image_key = image_key
-        self.encoder = Encoder(**self.hparams.autoencoderconfig)
+        
+        _img_size = ensure_tuple_rep(encoderconfig.img_size, encoderconfig.spatial_dims)
+        _patch_sizes = ensure_tuple_rep(self.patch_size, encoderconfig.spatial_dims)
+        _window_size = ensure_tuple_rep(7, encoderconfig.spatial_dims)
+        
+        self.encoder_normalize = encoderconfig.normalize
+
+        self.encoder = SwinTransformer(
+            in_chans=encoderconfig.in_channels,
+            embed_dim=encoderconfig.feature_size,
+            window_size=_window_size,
+            patch_size=_patch_sizes,
+            depths=encoderconfig.depths,
+            num_heads=encoderconfig.num_heads,
+            mlp_ratio=4.0,
+            qkv_bias=True,
+            drop_rate=encoderconfig.drop_rate,
+            attn_drop_rate=encoderconfig.attn_drop_rate,
+            drop_path_rate=encoderconfig.dropout_path_rate,
+            norm_layer=nn.LayerNorm,
+            use_checkpoint=encoderconfig.use_checkpoint,
+            spatial_dims=encoderconfig.spatial_dims,
+            downsample=look_up_option(encoderconfig.downsample, MERGING_MODE) if isinstance(encoderconfig.downsample, str) else encoderconfig.downsample,
+            use_v2=encoderconfig.use_v2,
+        )
+
         self.decoder = Decoder(**self.hparams.autoencoderconfig)
         self.loss = loss
         self.quantize = VectorQuantizer(
@@ -54,6 +86,11 @@ class VQGANSeg(LightningModule):
             beta=0.25,
             remap=remap,
             sane_index_shape=sane_index_shape,
+        )
+        self.quant_conv_module = nn.Sequential(
+            torch.nn.ConvTranspose2d(encoderconfig.feature_size * 16, encoderconfig.feature_size * 8, kernel_size=2, stride=2),
+            torch.nn.ConvTranspose2d(encoderconfig.feature_size * 8, encoderconfig.feature_size * 4, kernel_size=2, stride=2),
+            torch.nn.Conv2d(encoderconfig.feature_size * 4, embed_dim, 1)
         )
         self.quant_conv = torch.nn.Conv2d(self.hparams.autoencoderconfig["z_channels"], embed_dim, 1)
         self.post_quant_conv = torch.nn.Conv2d(embed_dim, self.hparams.autoencoderconfig["z_channels"], 1)
@@ -116,13 +153,13 @@ class VQGANSeg(LightningModule):
 
     def encode(self, x):
         h = self.encoder(x)
-        h = self.quant_conv(h)
+        h = self.quant_conv_module(h)[-1]
         quant, emb_loss, info = self.quantize(h)
         return quant, emb_loss, info
 
     def encode_to_prequant(self, x):
         h = self.encoder(x)
-        h = self.quant_conv(h)
+        h = self.quant_conv_module(h)
         return h
 
     def decode(self, quant):
@@ -334,37 +371,11 @@ def main(cfg: DictConfig) -> Optional[float]:
     input = torch.randn(2, IMG_CHANNELS, IMG_SIZE, IMG_SIZE)
     print("Number of params: ", sum(p.numel() for p in model.parameters()))
 
-    def encode_check(model, img):
-        x = model.encoder.conv_first(img)
-
-        hs = [x]
-        for i_level in range(model.encoder.num_resolutions):
-            for i_block in range(model.encoder.num_res_blocks):
-                h = model.encoder.down[i_level].block[i_block](hs[-1])
-                if len(model.encoder.down[i_level].attn) > 0:
-                    h = model.encoder.down[i_level].attn[i_block](h)
-                hs.append(h)
-            if i_level != model.encoder.num_resolutions - 1:
-                hs.append(model.encoder.down[i_level].downsample(hs[-1]))
-
-        # middle
-        x = hs[-1]
-
-        # Final ResNet blocks with attention
-        x = model.encoder.mid.block_1(x)
-        x = model.encoder.mid.attn_1(x)
-        x = model.encoder.mid.block_2(x)
-
-        # Normalize and map to embedding space
-        x = model.encoder.norm_out(x)
-        x = model.encoder.swish(x)
-        print("Encoder pre conv_out:", x.shape)
-        x = model.encoder.conv_out(x)
-        return x
+    from IPython import embed; embed()
     # Encode
-    h = encode_check(model, input)
+    h = model.encoder(input, model.encoder_normalize)[-1]
     print("Encoder output:", h.shape)
-    h = model.quant_conv(h)
+    h = model.quant_conv_module(h)
     print("Quant conv output:", h.shape)
     quant, emb_loss, info = model.quantize(h)
     print("Quantized output:", quant.shape)
