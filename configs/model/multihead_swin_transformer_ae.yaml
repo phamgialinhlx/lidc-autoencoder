@@ -1,0 +1,52 @@
+_target_ : src.models.multihead_swin_transformer_ae_module.MultiheadSwinVQGAN
+
+encoderconfig:
+  normalize: True
+  img_size: 128
+  spatial_dims: 2
+  in_channels: 1
+  out_channels: 2
+  depths: [2, 2, 2, 2]
+  num_heads: [3, 6, 12, 24]
+  feature_size: 24
+  norm_name: "instance"
+  drop_rate: 0.0
+  attn_drop_rate: 0.0
+  dropout_path_rate: 0.0
+  use_checkpoint: True
+  downsample: "merging"
+  use_v2: False
+
+loss: 
+  _target_: src.models.components.vq_gan_2d.losses.vqperceptual.VQLPIPSWithDiscriminator
+  disc_start: 1
+  codebook_weight: 1.0
+  disc_num_layers: 2
+  disc_in_channels: 1
+  disc_weight: 0.6
+  disc_conditional: false
+  n_classes: 1
+
+autoencoderconfig:
+  channels: 64
+  channel_multipliers: [1, 2, 4]
+  n_resnet_blocks: 2
+  img_channels: 1
+  z_channels: 16
+  double_z: False
+  resolution: 64
+  attn_resolutions:
+  - 16
+  out_img_size: 16
+  out_channels: 16
+segmentation_decoder: !!null
+segmentation_criterion: !!null
+classifier_head: !!null
+clasification_criterion: !!null
+embed_dim: 16
+n_embed: 16384
+# lr: 4.5e-6
+lr: 5.0e-5
+remap: !!null
+use_ema: False
+ckpt_path: !!null
