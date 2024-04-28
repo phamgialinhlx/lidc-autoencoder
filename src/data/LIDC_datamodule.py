@@ -71,26 +71,37 @@ class LIDCDataModule(LightningDataModule):
 
         self.data_test = LIDC_IDRI_Dataset(nodule_test, clean_test, mode="test", transforms=self.hparams.transforms, img_size=img_size, include_label=include_label)
 
-    def split_data(self, file_paths, train_val_test_split):
-        # get len files
+    def split_data(self, file_paths, train_val_test_split, random_seed=42):
+        # Set random seed for reproducibility
+        np.random.seed(random_seed)
+        
+        # Convert file paths to a numpy array
+        file_paths = np.array(file_paths)
+        
+        # Shuffle the file paths
+        np.random.shuffle(file_paths)
+        
+        # Get number of files
         num_files = len(file_paths)
-
-        # ratio
+        
+        # Ratios
         train_ratio, val_ratio, test_ratio = train_val_test_split
-
-        # get num train, val, test
+        
+        # Calculate the number of files for each split
         num_train = int(num_files * train_ratio / (train_ratio + val_ratio + test_ratio))
         num_val = int(num_files * val_ratio / (train_ratio + val_ratio + test_ratio))
-
-        # get random index
-        train_paths = list(np.random.choice(file_paths, num_train, replace=False))
-        val_paths = list(np.random.choice(list(set(file_paths) - set(train_paths)), num_val, replace=False))
-        test_paths = list(set(file_paths) - set(train_paths) - set(val_paths))
+        num_test = num_files - num_train - num_val  # Ensure remaining files go to test
+        
+        # Split the file paths
+        train_paths = file_paths[:num_train].tolist()
+        val_paths = file_paths[num_train:num_train + num_val].tolist()
+        test_paths = file_paths[num_train + num_val:].tolist()
+        
         return train_paths, val_paths, test_paths
     
     @property
     def num_classes(self):
-        return 4
+        return 2
 
     def train_dataloader(self):
         return DataLoader(

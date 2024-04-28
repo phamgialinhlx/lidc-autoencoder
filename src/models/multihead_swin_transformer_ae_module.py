@@ -268,8 +268,10 @@ class MultiheadSwinVQGAN(LightningModule):
             logger=True, on_step=True, on_epoch=True)
 
         opt_ae.zero_grad()
-        segmentation_scale = 25
-        classification_scale = 10
+        # segmentation_scale = 25
+        segmentation_scale = 1
+        # classification_scale = 10
+        classification_scale = 1
         if self.segmentation_decoder is not None and self.classifier_head is None:
             self.manual_backward(aeloss + segmentation_scale * seg_loss)
         elif self.segmentation_decoder is None and self.classifier_head is not None:
