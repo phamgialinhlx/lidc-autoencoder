@@ -26,6 +26,10 @@ data:
   num_workers: 4
   pin_memory: False
 
+model:
+  autoencoderconfig:
+    channel_multipliers: [1, 2, 4]
+
 logger: 
   wandb:
     name: "vq_gan_2d_seg"

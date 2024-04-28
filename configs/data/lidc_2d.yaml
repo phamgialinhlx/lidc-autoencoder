@@ -4,7 +4,7 @@ clean_dir: /data/hpc/pgl/data/Clean/Image
 train_val_test_split: [8, 1, 1]
 batch_size: 16
 num_workers: 4
-pin_memory: True
+pin_memory: False
 num_nodule: 13900
 num_clean: 6880
 img_size: 128

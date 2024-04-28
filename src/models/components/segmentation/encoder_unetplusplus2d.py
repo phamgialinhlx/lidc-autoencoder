@@ -54,9 +54,9 @@ class EncoderUNetPlusPlus2D(nn.Module):
             # i-th down convolution layer of all unets
             # if i != 0 and i != 1:
             self.down_conv_modules[i] = self.get_conv_block(self.channels[i], self.channels[i + 1])
+            self.norm_act_modules[i] = self.norm_act(self.channels[i + 1]).cuda()
             # else:
-            if i == 0 or i == 1:
-                self.norm_act_modules[i] = self.norm_act(self.channels[i + 1]).to("cuda")
+            # if i == 0 or i == 1:
             # up layers of i-th unet
             for j in range(i + 1):
                 # sum of channels after concat
@@ -93,11 +93,6 @@ class EncoderUNetPlusPlus2D(nn.Module):
                 hs.append(encoder.down[i_level].downsample(hs[-1]))
 
         x1, _, x2, x3 = x_out
-        # for h in hs:
-        #     print(h.shape)
-        # print("-------------")
-        # for h in x_out:
-        #     print(h.shape)
         for i in range(self.number_unet):
             # i-th down layer of all unets
             if i == 0:

@@ -3,8 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import albumentations as A
-from albumentations import Compose
-from albumentations.pytorch.transforms import ToTensorV2
+import torchvision
 import glob
 
 class LIDC_IDRI_Dataset(Dataset):
@@ -17,18 +16,13 @@ class LIDC_IDRI_Dataset(Dataset):
         self.nodule_path = nodule_path
         self.clean_path = clean_path
         self.mode = mode
-        self.transforms = transforms
+        self.transforms = torchvision.transforms.Compose(
+            [
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Resize((img_size, img_size)),
+            ]
+        )
         self.img_size = img_size
-
-        if transforms is not None:
-            self.transforms = transforms
-        else:
-            self.transforms = Compose(
-                [
-                    A.Resize(self.img_size, self.img_size),
-                    ToTensorV2(),
-                ]
-            )
 
         # define function to get list of (image, mask)
         self.file_list = self.get_paths(self.nodule_path, nodule=True)
@@ -54,11 +48,13 @@ class LIDC_IDRI_Dataset(Dataset):
 
         image = np.load(f_image)
         mask = np.load(f_mask).astype(np.int8)
-        transformed = self.transforms(image=image, mask=mask)
-        image = transformed["image"]
-        mask = transformed["mask"]
-        image = image.to(torch.float)
-        mask = mask.unsqueeze(0).to(torch.float)
+        if self.transforms is not None:
+            image = self.transforms(image).float()
+            mask = self.transforms(mask).float()
+        # image = torch.from_numpy(image.copy()).float()
+        # image = image.unsqueeze(0)
+        # mask = torch.from_numpy(mask.copy()).float()
+        # mask = mask.unsqueeze(0)
         # if image.min() - image.max() == 0:
             # print(f_image)
         return {
@@ -67,7 +63,7 @@ class LIDC_IDRI_Dataset(Dataset):
         }
 
     def _normalize_image(self, image):
-        min_val = np.min()
+        min_val = np.min(image)
         max_val = np.max(image)
 
         if max_val - min_val > 0:
@@ -92,4 +88,6 @@ if __name__ == "__main__":
         "all"
     )
     for data in ds:
-        a = 0
+        print(data["segmentation"].shape)
+        print(data["mask"].shape)
+        break

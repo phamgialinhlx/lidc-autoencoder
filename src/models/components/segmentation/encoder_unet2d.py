@@ -40,13 +40,13 @@ class EncoderUNet2D(nn.Module):
         # self.down2 = Down(self.channels[1], self.channels[2], conv_type=self.convtype)
         self.down3 = Down(self.channels[2], self.channels[3], conv_type=self.convtype)
         self.norm_act_3 = nn.Sequential(
-            nn.BatchNorm2d(self.channels[3]),
+            nn.BatchNorm2d(self.channels[2]),
             nn.ReLU(inplace=True)
         )
         factor = 2 if bilinear else 1
         self.down4 = Down(self.channels[3], self.channels[4] // factor, conv_type=self.convtype)
         self.norm_act_4 = nn.Sequential(
-            nn.BatchNorm2d(self.channels[4] // factor),
+            nn.BatchNorm2d(self.channels[3]),
             nn.ReLU(inplace=True)
         )
         self.up1 = Up(self.channels[4], self.channels[3] // factor, bilinear)
@@ -75,7 +75,9 @@ class EncoderUNet2D(nn.Module):
                 hs.append(encoder.down[i_level].downsample(hs[-1]))
         x1, _, x2, x3 = x_out
         x4 = self.down3(self.norm_act_3(x3))
+        # x4 = self.down3(x3)
         x5 = self.down4(self.norm_act_4(x4))
+        # x5 = self.down4(x4)
         x = self.up1(x5, x4)
         x = self.up2(x, x3)
         x = self.up3(x, x2)

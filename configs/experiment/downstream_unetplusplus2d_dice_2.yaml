@@ -5,7 +5,7 @@
 
 
 defaults:
-  - override /data: lidc_2d
+  - override /data: lidc2d
   - override /model: downstream_segmentation_2d
   - override /callbacks: segmentation2d
   - override /trainer: default
@@ -14,24 +14,24 @@ defaults:
 tags: ["segmentation", "lidc"]
 task_name: "train_segmentation"
 
-# data:
-#   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
-#   batch_size: 16
-#   image_size: 128
-#   train_val_test_split: [80, 10, 10]
-#   nodules_only: True
-#   include_mask: True
-#   include_origin_image: False
-#   include_segmentation: True
-#   num_workers: 4
-#   pin_memory: False
+data:
+  data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
+  batch_size: 16
+  image_size: 128
+  train_val_test_split: [80, 10, 10]
+  nodules_only: True
+  include_mask: True
+  include_origin_image: False
+  include_segmentation: True
+  num_workers: 4
+  pin_memory: False
 
 model:
   net:
     _target_: src.models.components.segmentation.encoder_unetplusplus2d.EncoderUNetPlusPlus2D
     in_channels: 1
     base_channels: 64
-    n_classes: 2
+    n_classes: 1
     number_unet: 4
     conv_layer: Conv2d
     norm_layer: InstanceNorm2d
@@ -53,14 +53,12 @@ model:
 
   autoencoder_path: "./outputs/vq_gan_2d_seg2/checkpoints/epoch_080.ckpt"
   criterion:
-    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1.0, 25.0]
+    _target_: src.models.components.loss_function.diceloss.DiceLoss
   scheduler: null
 
 logger: 
   wandb:
-    name: "ds_unetplusplus2d_seg_2"
-    id: 1jzhr05l
+    name: "ds_unetplusplus2d_dice_2"
 
 callbacks:
   model_checkpoint:
@@ -72,4 +70,3 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-04-27_23-39-04/lung-thesis/1jzhr05l/checkpoints/last.ckpt"
