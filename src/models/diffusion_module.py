@@ -14,19 +14,25 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from src.utils.ema import LitEma
 from src.models.vq_gan_3d_module import VQGAN
+from src.models.swin_transformer_ae_module import SwinVQGAN
 from src.models.components.diffusion.sampler import BaseSampler
 from src.models.components.diffusion.sampler.ddpm import DDPMSampler
 
 def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False, eval=True):
+    # Attempt to load the SwinVQGAN model as a fallback
     try:
-        ae = VQGAN.load_from_checkpoint(ckpt_path, map_location=map_location)
+        ae = SwinVQGAN.load_from_checkpoint(checkpoint_path=ckpt_path, map_location=map_location)
         if ae.use_ema:
             ae.model_ema.store(ae.parameters())
             ae.model_ema.copy_to(ae)
+        
+        # Disable the decoder if requested
         if disable_decoder:
             ae.decoder = None
+
     except Exception as e:
-        print(f"Failed to load autoencoder from {ckpt_path}: {e}")
+        print(f"Failed to load SwinVQGAN from {ckpt_path}: {e}")
+        return None
     if eval:
         ae.eval()
         ae.freeze()
@@ -90,7 +96,7 @@ class DiffusionModule(LightningModule):
         if self.autoencoder is None:
             return x
         else:
-            if isinstance(self.autoencoder, VQGAN):
+            if isinstance(self.autoencoder, VQGAN) or isinstance(self.autoencoder, SwinVQGAN):
                 x = self.autoencoder.encode(
                     x, quantize=False, include_embeddings=True)
                 # normalize to -1 and 1
@@ -106,7 +112,7 @@ class DiffusionModule(LightningModule):
         if self.autoencoder is None:
             return xt
         else:
-            if isinstance(self.autoencoder, VQGAN):
+            if isinstance(self.autoencoder, VQGAN) or isinstance(self.autoencoder, SwinVQGAN):
                 # denormalize TODO: Remove eventually
                 codebook_embeddings = self.autoencoder.codebook.embeddings
                 xt = (((xt + 1.0) / 2.0) * (codebook_embeddings.max() -
@@ -202,3 +208,39 @@ class DiffusionModule(LightningModule):
         out_images = self.autoencoder_decode(xt)
         return {"generate": out_images}
     
+    def log_image(
+            self, 
+            x, 
+            noise: torch.Tensor = None,
+            repeat_noise: bool = False,
+            prog_bar: bool = True,
+            cond: Tensor = None,
+            device: torch.device = torch.device('cuda')):
+        xt = self.autoencoder_encode(x)
+        xt = torch.randn(xt.shape).to(device)
+
+        sample_steps = (
+            tqdm(self.sampler.timesteps, desc="Sampling t")
+            if prog_bar
+            else self.sampler.timesteps
+        )
+        
+        if self.use_ema:
+            # generate sample by ema_model
+            with self.ema_scope():
+                for i, t in enumerate(sample_steps):
+                    
+                    t = torch.full((xt.shape[0],), t, device=device, dtype=torch.int64)
+                    model_output = self.net(x=xt, time=t, cond=cond)
+                    xt = self.sampler.reverse_step(
+                        model_output, t, xt, noise, repeat_noise
+                    )
+        else:
+            for i, t in enumerate(sample_steps):
+                t = torch.full((xt.shape[0],), t, device=device, dtype=torch.int64)
+                model_output = self.net(x=xt, time=t, cond=cond)
+                xt = self.sampler.reverse_step(
+                    model_output, t, xt, noise, repeat_noise
+                )
+        out_images = self.autoencoder_decode(xt)
+        return {"generate": out_images}
