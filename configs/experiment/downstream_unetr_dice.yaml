@@ -1,0 +1,62 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=vq_gan_3d
+
+
+defaults:
+  - override /data: lidc_2d
+  - override /model: downstream_segmentation_2d
+  - override /callbacks: segmentation2d
+  - override /trainer: default
+  - override /logger: wandb
+
+tags: ["segmentation", "lidc"]
+task_name: "train_segmentation"
+
+data:
+#   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
+  batch_size: 64
+#   image_size: 128
+#   train_val_test_split: [80, 10, 10]
+#   nodules_only: True
+#   include_mask: True
+#   include_origin_image: False
+#   include_segmentation: True
+#   num_workers: 4
+#   pin_memory: False
+
+model:
+  net:
+    _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+    img_size: 128
+    in_channels: 1
+    out_channels: 1
+    use_checkpoint: True
+    spatial_dims: 2
+    feature_size: 48
+
+  autoencoder_path: "/work/hpc/pgl/lung-diffusion/outputs/swin_transformer_ae_f48/checkpoints/epoch_036.ckpt"
+  criterion:
+    _target_: src.models.components.loss_function.diceloss.DiceLoss
+
+  optimizer:
+    _target_: torch.optim.Adam
+    _partial_: true
+    lr: 0.01
+    weight_decay: 0.0
+
+logger: 
+  wandb:
+    name: "ds_unetr_dice"
+
+callbacks:
+  model_checkpoint:
+    monitor: "val/dice"
+    mode: "max"
+    save_last: True
+    
+trainer:
+  max_epochs: 1000
+  accelerator: gpu
+

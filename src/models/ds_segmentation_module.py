@@ -77,7 +77,6 @@ class DownstreamSegmentationModule(LightningModule):
                 BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
-            BCE_pos_weight = torch.FloatTensor([50.0]).to(device=self.device)
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
         
         logits = self.net(self.encoder, x)
