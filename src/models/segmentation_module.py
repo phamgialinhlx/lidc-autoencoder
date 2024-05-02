@@ -69,6 +69,7 @@ class SegmentationModule(LightningModule):
         if self.net.n_classes == 2:
             loss = self.criterion(logits, y.squeeze(1))
             preds = torch.argmax(logits, dim=1).unsqueeze(0)
+            preds = preds.permute(1, 0, 2, 3)
         else:
             loss = self.criterion(logits, y.float())
             preds = torch.sigmoid(logits)

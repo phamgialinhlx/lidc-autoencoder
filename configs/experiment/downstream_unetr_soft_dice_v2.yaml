@@ -40,26 +40,27 @@ model:
     _target_: src.models.components.loss_function.soft_dice.SoftDiceLossV2
     smooth: 1e-5
 
-  optimizer:
-    _target_: torch.optim.Adam
-    _partial_: true
-    lr: 5.0e-5
-    weight_decay: 0.0
-    betas: [0.5, 0.9]
+  # optimizer:
+  #   _target_: torch.optim.Adam
+  #   _partial_: true
+  #   lr: 0.0001
+  #   weight_decay: 0.0
+  #   betas: [0.5, 0.9]
 
 logger: 
   wandb:
-    name: "ds_unetr_soft_dice_v2"
-    # id: 3782mg8z
+    name: "ds_unetr_soft_dice_v2-v2"
+    id: 343gggdl
 
 callbacks:
   model_checkpoint:
     monitor: "val/dice"
     mode: "max"
     save_last: True
+    save_on_train_epoch_end: True
     
 trainer:
   max_epochs: 1000
   accelerator: gpu
 
-ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-01_22-49-36/lung-thesis/3782mg8z/checkpoints/epoch=28-step=7540.ckpt"
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_14-19-46/lung-thesis/3agdj8ep/checkpoints/epoch=35-step=9360.ckpt"

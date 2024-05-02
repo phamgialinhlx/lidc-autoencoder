@@ -52,6 +52,7 @@ model:
 logger: 
   wandb:
     name: "ds_unetr_focal"
+    id: 3vbgaayf
 
 callbacks:
   model_checkpoint:
@@ -63,5 +64,5 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-01_22-29-00/lung-thesis/3pnu3eo9/checkpoints/epoch=22-step=11937.ckpt"
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_12-34-42/lung-thesis/3vbgaayf/checkpoints/epoch=23-step=12456.ckpt"
 

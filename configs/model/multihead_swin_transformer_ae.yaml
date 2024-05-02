@@ -39,6 +39,7 @@ autoencoderconfig:
   - 16
   out_img_size: 16
   out_channels: 16
+
 segmentation_decoder: !!null
 segmentation_criterion: !!null
 classifier_head: !!null
