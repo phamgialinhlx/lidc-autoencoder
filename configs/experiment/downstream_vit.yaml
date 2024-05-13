@@ -5,7 +5,7 @@
 
 
 defaults:
-  - override /data: lidc
+  - override /data: lidc_2d
   - override /model: downstream_vit
   - override /callbacks: "classification"
   - override /trainer: default
@@ -15,17 +15,22 @@ tags: ["classification", "lidc"]
 task_name: "train_classification"
 
 data:
-  train_val_test_split: [800, 110, 100]
-  augmentation: False
-  image_size: 128
-  batch_size: 1
+  batch_size: 64
+  include_clean: True
+  include_label: True
 
 model:
-  autoencoder_ckpt_path: "./outputs/vq_gan_3d_low_compression/lung-thesis/2aglgm52/checkpoints/epoch=111-step=179200.ckpt"
+  autoencoder_ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/swin_transformer_ae_f48/checkpoints/epoch_036.ckpt"
+  net: 
+    _target_: src.models.components.classification.vit.VIT
+
+  criterion:
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [50.0, 1.0]
 
 logger: 
   wandb:
-    name: "downstream_vit"
+    name: "ds_vit"
 
 callbacks:
   model_checkpoint:

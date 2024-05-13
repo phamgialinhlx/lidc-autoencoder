@@ -5,9 +5,9 @@
 
 
 defaults:
-  - override /data: lidc
+  - override /data: lidc_2d
   - override /model: downstream_classification
-  - override /callbacks: "classification"
+  - override /callbacks: classification
   - override /trainer: default
   - override /logger: wandb
 
@@ -15,27 +15,29 @@ tags: ["classification", "lidc"]
 task_name: "train_classification"
 
 data:
-  train_val_test_split: [800, 110, 100]
-  augmentation: False
-  image_size: 128
-  batch_size: 1
+  batch_size: 64
+  include_clean: True
+  include_label: True
 
 model:
-  autoencoder_ckpt_path: "./outputs/vq_gan_3d_low_compression/lung-thesis/2aglgm52/checkpoints/epoch=111-step=179200.ckpt"
+  autoencoder_ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/swin_transformer_ae_f48/checkpoints/epoch_036.ckpt"
+  criterion:
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [50.0, 1.0]
   net: 
-    _target_: src.models.components.classification.ResNet3D
+    _target_: src.models.components.classification.resnet2d.ResNet2D
 
     num_blocks: [3,4,23,3]
     num_classes: 2
-    num_channels: 64
+    num_channels: 16
 
 logger: 
   wandb:
-    name: "downstream_resnet101"
+    name: "ds_resnet101"
 
 callbacks:
   model_checkpoint:
-    monitor: "val/f1"
+    monitor: "val/recall"
     mode: "max"
     save_last: True
     

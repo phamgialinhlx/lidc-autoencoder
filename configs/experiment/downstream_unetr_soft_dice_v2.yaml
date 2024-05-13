@@ -28,29 +28,35 @@ data:
 
 model:
   net:
-    _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+    # _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+    # img_size: 128
+    # in_channels: 1
+    # out_channels: 1
+    # spatial_dims: 2
+    # feature_size: 48
+    _target_: src.models.components.monai.swin_unetr.SwinUNETR
     img_size: 128
     in_channels: 1
     out_channels: 1
     spatial_dims: 2
     feature_size: 48
+    use_checkpoint: true
 
   autoencoder_path: "/work/hpc/pgl/lung-diffusion/outputs/swin_transformer_ae_f48/checkpoints/epoch_036.ckpt"
   criterion:
     _target_: src.models.components.loss_function.soft_dice.SoftDiceLossV2
     smooth: 1e-5
 
-  # optimizer:
-  #   _target_: torch.optim.Adam
-  #   _partial_: true
-  #   lr: 0.0001
-  #   weight_decay: 0.0
-  #   betas: [0.5, 0.9]
+  optimizer:
+    _target_: torch.optim.Adam
+    _partial_: true
+    lr: 0.0001
+    weight_decay: 0.0
 
 logger: 
   wandb:
-    name: "ds_unetr_soft_dice_v2-v2"
-    id: 343gggdl
+    name: "ds_unetr_soft_dice_v2"
+    id: 1axptv6r
 
 callbacks:
   model_checkpoint:
@@ -63,4 +69,4 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_14-19-46/lung-thesis/3agdj8ep/checkpoints/epoch=35-step=9360.ckpt"
+ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/downstream_unetr_soft_dice_v2/lung-thesis/1axptv6r/checkpoints/epoch=74-step=19500.ckpt"

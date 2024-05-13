@@ -52,23 +52,16 @@ model:
       bias: false
 
   autoencoder_path: "./outputs/vq_gan_2d_seg2/checkpoints/epoch_080.ckpt"
-
   criterion:
-    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1.0, 25.0]
-
-  optimizer:
-    _target_: torch.optim.Adam
-    _partial_: true
-    lr: 0.0001
-    weight_decay: 0.0
-
-  use_ema: true
+    _target_: src.models.components.loss_function.focalloss.FocalLoss
+    alpha: 0.25
+    gamma: 2
+  # scheduler: null
 
 logger: 
   wandb:
-    name: "ds_unetplusplus2d_seg_2"
-    # id: 1xeuodqj
+    name: "ds_unetplusplus2d_focal"
+    # id: 1jzhr05l
 
 callbacks:
   model_checkpoint:
@@ -80,5 +73,4 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-11_17-04-29/lung-thesis/1xeuodqj/checkpoints/epoch=16-step=17646.ckpt"
-ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-11_18-14-23/lung-thesis/1xeuodqj/checkpoints/epoch=72-step=75774.ckpt"
+# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-04-27_23-39-04/lung-thesis/1jzhr05l/checkpoints/last.ckpt"

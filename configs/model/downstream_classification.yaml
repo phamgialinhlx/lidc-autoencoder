@@ -1,4 +1,4 @@
-_target_: src.models.ClassificationModule
+_target_: src.models.ds_classification_module.ClassificationModule
 
 defaults:
   - net: resnet18.yaml

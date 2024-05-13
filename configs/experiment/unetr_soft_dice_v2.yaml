@@ -38,21 +38,18 @@ model:
     use_checkpoint: true
 
   criterion:
-    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    # weight: [1.0, 1.0]
-    weight: [1.0, 50.0]
+    _target_: src.models.components.loss_function.soft_dice.SoftDiceLossV2
+    smooth: 1e-5
 
   optimizer:
     _target_: torch.optim.Adam
     _partial_: true
     lr: 0.01
     weight_decay: 0.0
-  use_ema: false
 
 logger: 
   wandb:
     name: "unetr"
-    # id: 1y2kwyzb
 
 callbacks:
   model_checkpoint:
@@ -64,4 +61,3 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_19-54-57/lung-thesis/1y2kwyzb/checkpoints/epoch=42-step=11180.ckpt"

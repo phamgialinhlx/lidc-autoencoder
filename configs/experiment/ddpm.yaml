@@ -36,6 +36,11 @@ callbacks:
     mode: "min"
     save_last: True
     save_on_train_epoch_end: True
-    
+  image_logger:
+    fid:
+      _target_: torchmetrics.image.FrechetInceptionDistance
+      feature: 2048
+      normalize: True
+
 trainer:
   max_epochs: 1000

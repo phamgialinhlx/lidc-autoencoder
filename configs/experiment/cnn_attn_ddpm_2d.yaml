@@ -29,13 +29,13 @@ model:
     attention_resolutions: [1, 2, 4, 8]
     num_heads: 8
     num_res_blocks: 2
-  autoencoder_ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/swin_transformer_ae_f48/checkpoints/epoch_036.ckpt"
+  autoencoder_ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/vq_gan_2d_seg2/checkpoints/epoch_080.ckpt"
 
 logger: 
   wandb:
-    name: "ddpm_2d"
-    id: ybtohnfs
-
+    name: "cnn_attn_ddpm_2d"
+    id: "scngqepk"
+  
 callbacks:
   model_checkpoint:
     monitor: "val/loss"
@@ -50,4 +50,4 @@ callbacks:
 trainer:
   max_epochs: 1000
 
-ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/ddpm_2d/lung-thesis/ybtohnfs/checkpoints/epoch=168-step=62083.ckpt"
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_diffusion/runs/2024-05-09_18-27-14/lung-thesis/scngqepk/checkpoints/epoch=63-step=22208.ckpt"

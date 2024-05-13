@@ -16,43 +16,29 @@ task_name: "train_segmentation"
 
 data:
 #   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
-  batch_size: 64
-  include_clean: True
+  batch_size: 32
 #   image_size: 128
 #   train_val_test_split: [80, 10, 10]
 #   nodules_only: True
 #   include_mask: True
-#   include_origin_image: False
 #   include_segmentation: True
 #   num_workers: 4
 #   pin_memory: False
 
 model:
-  net:
-    _target_: src.models.components.monai.swin_unetr.SwinUNETR
-    img_size: 128
-    in_channels: 1
-    out_channels: 2
-    spatial_dims: 2
-    feature_size: 48
-    use_checkpoint: true
-
+  net: 
+    _target_: src.models.components.segmentation.unet2d.UNet2D
   criterion:
     _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    # weight: [1.0, 1.0]
     weight: [1.0, 50.0]
-
   optimizer:
     _target_: torch.optim.Adam
     _partial_: true
-    lr: 0.01
+    lr: 0.0001
     weight_decay: 0.0
-  use_ema: false
-
 logger: 
   wandb:
-    name: "unetr"
-    # id: 1y2kwyzb
+    name: "unet2d"
 
 callbacks:
   model_checkpoint:
@@ -64,4 +50,6 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_19-54-57/lung-thesis/1y2kwyzb/checkpoints/epoch=42-step=11180.ckpt"
+  # precision: 16-mixed
+
+# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-10_23-55-57/lung-thesis/p23uajld/checkpoints/epoch=16-step=8823.ckpt"

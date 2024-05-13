@@ -6,7 +6,7 @@
 
 defaults:
   - override /data: lidc_2d
-  - override /model: downstream_segmentation_2d
+  - override /model: segmentation
   - override /callbacks: segmentation2d
   - override /trainer: default
   - override /logger: wandb
@@ -14,24 +14,24 @@ defaults:
 tags: ["segmentation", "lidc"]
 task_name: "train_segmentation"
 
-# data:
+data:
 #   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
-#   batch_size: 16
+  batch_size: 32
 #   image_size: 128
 #   train_val_test_split: [80, 10, 10]
 #   nodules_only: True
 #   include_mask: True
-#   include_origin_image: False
 #   include_segmentation: True
 #   num_workers: 4
 #   pin_memory: False
 
 model:
-  net:
-    _target_: src.models.components.segmentation.encoder_unetplusplus2d.EncoderUNetPlusPlus2D
+  net: 
+    _target_: src.models.components.segmentation.origin_unetplusplus2d.UNetPlusPlus
+
     in_channels: 1
-    base_channels: 64
-    n_classes: 2
+    base_channels: 32
+    n_classes: 1
     number_unet: 4
     conv_layer: Conv2d
     norm_layer: InstanceNorm2d
@@ -50,25 +50,18 @@ model:
       stride: 2
       kernel_size: 2
       bias: false
-
-  autoencoder_path: "./outputs/vq_gan_2d_seg2/checkpoints/epoch_080.ckpt"
-
   criterion:
-    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1.0, 25.0]
-
+    _target_: src.models.components.loss_function.soft_dice.SoftDiceLossV2
+    smooth: 1e-5
   optimizer:
     _target_: torch.optim.Adam
     _partial_: true
     lr: 0.0001
     weight_decay: 0.0
-
-  use_ema: true
-
 logger: 
   wandb:
-    name: "ds_unetplusplus2d_seg_2"
-    # id: 1xeuodqj
+    name: "unetplusplus2d_soft_dice_v2"
+    # id: p23uajld
 
 callbacks:
   model_checkpoint:
@@ -80,5 +73,6 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-11_17-04-29/lung-thesis/1xeuodqj/checkpoints/epoch=16-step=17646.ckpt"
-ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-11_18-14-23/lung-thesis/1xeuodqj/checkpoints/epoch=72-step=75774.ckpt"
+  # precision: 16-mixed
+
+# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-10_23-55-57/lung-thesis/p23uajld/checkpoints/epoch=16-step=8823.ckpt"

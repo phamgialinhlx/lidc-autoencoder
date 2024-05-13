@@ -76,7 +76,8 @@ class LogMetricsCallback(Callback):
             images_seg = batch['segmentation']
             self.update_metrics(images_seg, image_outputs, device=pl_module.device)
         else:
-            self.update_metrics(images, image_outputs, device=pl_module.device)
+            images_seg = batch['segmentation']
+            self.update_metrics(images_seg, image_outputs, device=pl_module.device)
 
     def on_test_epoch_end(self, trainer: Trainer,
                           pl_module: LightningModule) -> None:
@@ -85,8 +86,10 @@ class LogMetricsCallback(Callback):
     def update_metrics(self, reals: Tensor, fakes: Tensor,
                        device: torch.device):
         # convert range (-1, 1) to (0, 1)
-        fakes = (fakes * self.std + self.mean).clamp(0, 1)
-        reals = (reals * self.std + self.mean).clamp(0, 1)
+        # fakes = (fakes * self.std + self.mean).clamp(0, 1)
+        # reals = (reals * self.std + self.mean).clamp(0, 1)
+        fakes = fakes.clamp(0, 1)
+        reals = reals.clamp(0, 1)
 
         # update
         if self.ssim is not None:

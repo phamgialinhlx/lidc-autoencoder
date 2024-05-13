@@ -16,7 +16,7 @@ task_name: "train_segmentation"
 
 data:
 #   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
-  batch_size: 32
+  batch_size: 64
 #   image_size: 128
 #   train_val_test_split: [80, 10, 10]
 #   nodules_only: True
@@ -28,14 +28,20 @@ data:
 
 model:
   net:
-    _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+    # _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+    # img_size: 128
+    # in_channels: 1
+    # out_channels: 1
+    # # use_checkpoint: True
+    # spatial_dims: 2
+    # feature_size: 48
+    _target_: src.models.components.monai.swin_unetr.SwinUNETR
     img_size: 128
     in_channels: 1
     out_channels: 1
-    # use_checkpoint: True
     spatial_dims: 2
     feature_size: 48
-
+    use_checkpoint: true
   autoencoder_path: "/work/hpc/pgl/lung-diffusion/outputs/swin_transformer_ae_f48/checkpoints/epoch_036.ckpt"
   criterion:
     _target_: src.models.components.loss_function.focalloss.FocalLoss
@@ -45,14 +51,13 @@ model:
   optimizer:
     _target_: torch.optim.Adam
     _partial_: true
-    lr: 5.0e-5
+    lr: 0.01
     weight_decay: 0.0
-    betas: [0.5, 0.9]
 
 logger: 
   wandb:
     name: "ds_unetr_focal"
-    id: 3vbgaayf
+    id: 21g4738u
 
 callbacks:
   model_checkpoint:
@@ -64,5 +69,4 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_12-34-42/lung-thesis/3vbgaayf/checkpoints/epoch=23-step=12456.ckpt"
-
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/downstream_unetr_focal/lung-thesis/21g4738u/checkpoints/epoch=56-step=14820.ckpt"

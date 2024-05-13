@@ -47,11 +47,11 @@ model:
     _partial_: true
     lr: 0.01
     weight_decay: 0.0
-  use_ema: false
+  use_ema: true
 
 logger: 
   wandb:
-    name: "unetr"
+    name: "unetr_ema"
     # id: 1y2kwyzb
 
 callbacks:

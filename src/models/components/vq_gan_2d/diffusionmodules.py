@@ -385,12 +385,14 @@ class Decoder(nn.Module):
 
 if __name__ == "__main__":
     IMG_CHANNELS = 3
-    CHANNEL_MULTIPLIERS = [1, 1, 2, 2, 4, 4]
+    CHANNEL_MULTIPLIERS = [1, 2, 4]
     Z_CHANNELS = 64
 
     encoder = Encoder(
         channels=64,
         channel_multipliers=CHANNEL_MULTIPLIERS,
+        attn_resolutions=[16],
+        resolution=64,
         n_resnet_blocks=2,
         img_channels=IMG_CHANNELS,
         z_channels=Z_CHANNELS,
@@ -398,10 +400,12 @@ if __name__ == "__main__":
     decoder = Decoder(
         channels=64,
         channel_multipliers=CHANNEL_MULTIPLIERS,
+        attn_resolutions=[16],
+        resolution=64,
         n_resnet_blocks=2,
         img_channels=IMG_CHANNELS,
         z_channels=2 * Z_CHANNELS,
     )
-    img = torch.randn(4, IMG_CHANNELS, 256, 256)
+    img = torch.randn(4, IMG_CHANNELS, 128, 128)
     print(encoder(img).shape)
     print(decoder(encoder(img)).shape)

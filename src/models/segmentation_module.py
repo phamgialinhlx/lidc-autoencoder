@@ -1,7 +1,7 @@
 import rootutils
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-
+from contextlib import contextmanager
 from typing import Any, List
 import gc
 import hydra
@@ -14,6 +14,7 @@ from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 from src.models.components.loss_function.lossbinary import LossBinary
 from src.models.components.loss_function.lovasz_loss import BCE_Lovasz
 import torch.nn.functional as F
+from src.utils.ema import LitEma
 
 class SegmentationModule(LightningModule):
     """Example of LightningModule for MNIST classification.
@@ -36,6 +37,7 @@ class SegmentationModule(LightningModule):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         criterion: torch.nn.Module,
+        use_ema: bool = False,
     ):
         super().__init__()
 
@@ -47,9 +49,31 @@ class SegmentationModule(LightningModule):
 
         # loss function
         self.criterion = criterion
+        self.use_ema = use_ema
+        if self.use_ema:
+            self.model_ema = LitEma(self.net)
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
+    
+    def on_train_batch_end(self, *args, **kwargs):
+        if self.use_ema:
+            self.model_ema(self.net)
+
+    @contextmanager
+    def ema_scope(self, context=None):
+        if self.use_ema:
+            self.model_ema.store(self.net.parameters())
+            self.model_ema.copy_to(self.net)
+            if context is not None:
+                print(f"{context}: Switched to EMA weights")
+        try:
+            yield None
+        finally:
+            if self.use_ema:
+                self.model_ema.restore(self.net.parameters())
+                if context is not None:
+                    print(f"{context}: Restored training weights")
 
     def model_step(self, batch: Any):
         x = batch['segmentation']
@@ -91,13 +115,13 @@ class SegmentationModule(LightningModule):
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
-        seg_loss, seg_preds, seg_targets = self.model_step(batch)
+        with self.ema_scope():
+            seg_loss, seg_preds, seg_targets = self.model_step(batch)
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
 
     def test_step(self, batch: Any, batch_idx: int):
-        seg_loss, seg_preds, seg_targets = self.model_step(batch)
-
-        # update and log metrics
+        with self.ema_scope():
+            seg_loss, seg_preds, seg_targets = self.model_step(batch)
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
 
     def configure_optimizers(self):
@@ -114,7 +138,7 @@ class SegmentationModule(LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/seg_loss",
+                    "monitor": "val/dice",
                     "interval": "epoch",
                     "frequency": 1,
                 },

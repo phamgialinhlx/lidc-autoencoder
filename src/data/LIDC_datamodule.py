@@ -9,7 +9,12 @@ import torchvision.transforms as transforms
 from typing import Any, Dict, Optional, Tuple
 import time
 import csv
-from data.components.LIDC_dataset import LIDC_IDRI_Dataset
+import glob
+
+import rootutils
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
+from src.data.components.LIDC_dataset import LIDC_IDRI_Dataset
 
 
 class LIDCDataModule(LightningDataModule):
@@ -25,6 +30,8 @@ class LIDCDataModule(LightningDataModule):
         num_clean: int = 1000,
         transforms: Any = None,
         img_size: int = 128,
+        include_clean: bool = True,
+        include_label: bool = False,
     ):
         super().__init__()
 
@@ -37,33 +44,32 @@ class LIDCDataModule(LightningDataModule):
         file_nodule_list = []
         file_clean_list = []
 
+        # from IPython import embed
+        # embed()
+        # glob.glob(os.path.join(self.hparams.nodule_dir, '*/*.npy'), recursive=True)
         # get full path of each nodule file
         for root, _, files in os.walk(self.hparams.nodule_dir):
             for file in files:
                 if file.endswith(".npy"):
                     dicom_path = os.path.join(root, file)
                     file_nodule_list.append(dicom_path)
-        
-        # get full path of each clean file
-        for root, _, files in os.walk(self.hparams.clean_dir):
-            for file in files:
-                if file.endswith(".npy"):
-                    dicom_path = os.path.join(root, file)
-                    file_clean_list.append(dicom_path)
-
-        # file_nodule_list = file_nodule_list[:self.hparams.num_nodule]
-
-        # file_clean_list = file_clean_list[:self.hparams.num_clean]
-
         nodule_train, nodule_val, nodule_test = self.split_data(file_nodule_list, self.hparams.train_val_test_split)
+        if include_clean:
+            # get full path of each clean file
+            for root, _, files in os.walk(self.hparams.clean_dir):
+                for file in files:
+                    if file.endswith(".npy"):
+                        dicom_path = os.path.join(root, file)
+                        file_clean_list.append(dicom_path)
+            clean_train, clean_val, clean_test = self.split_data(file_clean_list, self.hparams.train_val_test_split)
+        else:
+            clean_train, clean_val, clean_test = [], [], []
 
-        clean_train, clean_val, clean_test = self.split_data(file_clean_list, self.hparams.train_val_test_split)
+        self.data_train = LIDC_IDRI_Dataset(nodule_train, clean_train, mode="train", transforms=self.hparams.transforms, img_size=img_size, include_label=include_label)
 
-        self.data_train = LIDC_IDRI_Dataset(nodule_train, clean_train, mode="train", transforms=self.hparams.transforms, img_size=img_size)
+        self.data_val = LIDC_IDRI_Dataset(nodule_val, clean_val, mode="valid", transforms=self.hparams.transforms, img_size=img_size, include_label=include_label)
 
-        self.data_val = LIDC_IDRI_Dataset(nodule_val, clean_val, mode="valid", transforms=self.hparams.transforms, img_size=img_size)
-
-        self.data_test = LIDC_IDRI_Dataset(nodule_test, clean_test, mode="test", transforms=self.hparams.transforms, img_size=img_size)
+        self.data_test = LIDC_IDRI_Dataset(nodule_test, clean_test, mode="test", transforms=self.hparams.transforms, img_size=img_size, include_label=include_label)
 
     def split_data(self, file_paths, train_val_test_split):
         # get len files
@@ -126,7 +132,10 @@ class LIDCDataModule(LightningDataModule):
         pass
 
 if __name__ == "__main__":
-    datamodule = LIDCDataModule(num_nodule=1000, num_clean=500)
+    datamodule = LIDCDataModule(
+        nodule_dir="/data/hpc/pgl/data/Image",
+        clean_dir="/data/hpc/pgl/data/Clean/Image"
+    )
     train_dataloader = datamodule.train_dataloader()
     batch_image = next(iter(train_dataloader))
     images, labels = batch_image

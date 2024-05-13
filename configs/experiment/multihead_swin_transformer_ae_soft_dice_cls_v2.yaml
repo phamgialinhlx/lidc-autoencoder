@@ -17,6 +17,8 @@ task_name: "train_autoencoder"
 data:
 #   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
   batch_size: 16
+  include_clean: True
+  include_label: True
 #   image_size: 128
 #   train_val_test_split: [80, 10, 10]
 #   nodules_only: True
@@ -36,15 +38,15 @@ model:
     _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
     img_size: 128
     in_channels: 1
-    out_channels: 2
+    out_channels: 1
     use_checkpoint: True
     spatial_dims: 2
     feature_size: 48
 
   # segmentation_criterion: !!null
   segmentation_criterion: 
-    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
-    weight: [1.0, 50.0]
+    _target_: src.models.components.loss_function.soft_dice.SoftDiceLossV2
+    smooth: 1e-5
   loss: 
     _target_: src.models.components.vq_gan_2d.losses.vqperceptual.VQLPIPSWithDiscriminator
     disc_start: 10000
@@ -54,11 +56,19 @@ model:
     disc_weight: 0.6
     disc_conditional: false
     n_classes: 1
+  classifier_head:
+    _target_: src.models.components.classification.resnet2d.ResNet2D
 
+    num_blocks: [3,4,23,3]
+    num_classes: 2
+    num_channels: 16
+  clasification_criterion:
+    _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
+    weight: [50.0, 1.0]
 logger: 
   wandb:
-    name: "multihead_swin_transformer_ae"
-    id: 1vhaxj88
+    name: "multihead_swin_transformer_ae_soft_dice_cls_v2"
+    # id: 1vhaxj88
 
 callbacks:
   log_image:
@@ -76,11 +86,11 @@ callbacks:
     monitor: "val/ssim"
     mode: "max"
     save_last: True
-  classification_metrics: !!null
+  # classification_metrics: !!null
   # segmentation_metrics: !!null
   # mask2d_logger: !!null
 
 trainer:
   max_epochs: 1000
 
-ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/multihead_swin_transformer_ae/lung-thesis/1vhaxj88/checkpoints/epoch=56-step=113488.ckpt"
+# ckpt_path: "/work/hpc/pgl/lung-diffusion/outputs/multihead_swin_transformer_ae/lung-thesis/1vhaxj88/checkpoints/epoch=56-step=113488.ckpt"

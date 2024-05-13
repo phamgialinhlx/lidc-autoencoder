@@ -76,21 +76,21 @@ class EncoderUNetPlusPlus2D(nn.Module):
         # output convolution to n_classes
         self.output_conv = nn.Conv2d(base_channels, n_classes, kernel_size=1, stride=1, padding=0, bias=False)
 
-    def forward(self, encoder, input):
+    def forward(self, input):
         x = [[None] * (i + 1) for i in range(self.number_unet + 1)]
         # input convolution layer to base_channels
-        x[0][0] = encoder.conv_first(input)
+        x[0][0] = self.encoder.conv_first(input)
         hs = [x[0][0]]
         x_out = [x[0][0]]
-        for i_level in range(encoder.num_resolutions):
-            for i_block in range(encoder.num_res_blocks):
-                h = encoder.down[i_level].block[i_block](hs[-1])
-                if len(encoder.down[i_level].attn) > 0:
-                    h = encoder.down[i_level].attn[i_block](h)
+        for i_level in range(self.encoder.num_resolutions):
+            for i_block in range(self.encoder.num_res_blocks):
+                h = self.encoder.down[i_level].block[i_block](hs[-1])
+                if len(self.encoder.down[i_level].attn) > 0:
+                    h = self.encoder.down[i_level].attn[i_block](h)
                 hs.append(h)
             x_out.append(hs[-1])
-            if i_level != encoder.num_resolutions - 1:
-                hs.append(encoder.down[i_level].downsample(hs[-1]))
+            if i_level != self.encoder.num_resolutions - 1:
+                hs.append(self.encoder.down[i_level].downsample(hs[-1]))
 
         x1, _, x2, x3 = x_out
         for i in range(self.number_unet):

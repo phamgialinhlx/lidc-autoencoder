@@ -1,10 +1,18 @@
 _target_: src.models.segmentation_module.SegmentationModule
 
 defaults:
-  - net: downstream_unet3d.yaml
+  # - net: downstream_unet3d.yaml
   - criterion: dice_loss.yaml
 # net:
 #   autoencoder_path: ""
+
+net: 
+  _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+  img_size: 128
+  in_channels: 1
+  out_channels: 2
+  spatial_dims: 2
+  feature_size: 48
 
 optimizer:
   _target_: torch.optim.Adam

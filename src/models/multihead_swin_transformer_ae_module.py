@@ -185,10 +185,12 @@ class MultiheadSwinVQGAN(LightningModule):
         dec = self.decode(quant_b)
         return dec
 
-    def forward_clasification(self, batch):
+    def forward_clasification(self, batch, key="segmentation"):
         x = batch['segmentation']
         y = batch['label']
-        logits = self.classifier_head(self.encoder(x))
+        x = self.encoder(x)[-1]
+        x = self.quant_conv_module(x)
+        logits = self.classifier_head(x)
         loss = self.clasification_criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
@@ -254,6 +256,8 @@ class MultiheadSwinVQGAN(LightningModule):
         ds_loss = aeloss 
         if self.segmentation_decoder is not None:
             seg_loss, seg_preds, seg_targets = self.forward_segmentation(batch, key="segmentation")
+            if seg_loss.shape == torch.Size([1]):
+                seg_loss = seg_loss[0]
             ds_loss += seg_loss
         if self.classifier_head is not None:
             cls_loss, cls_preds, cls_targets = self.forward_clasification(batch, key="segmentation")
@@ -264,12 +268,14 @@ class MultiheadSwinVQGAN(LightningModule):
             logger=True, on_step=True, on_epoch=True)
 
         opt_ae.zero_grad()
+        segmentation_scale = 25
+        classification_scale = 10
         if self.segmentation_decoder is not None and self.classifier_head is None:
-            self.manual_backward(aeloss + 10 * seg_loss)
+            self.manual_backward(aeloss + segmentation_scale * seg_loss)
         elif self.segmentation_decoder is None and self.classifier_head is not None:
-            self.manual_backward(aeloss + 10 * cls_loss)
+            self.manual_backward(aeloss + classification_scale * cls_loss)
         elif self.segmentation_decoder is not None and self.classifier_head is not None:
-            self.manual_backward(aeloss + 10 * seg_loss + 10 * cls_loss)
+            self.manual_backward(aeloss + segmentation_scale * seg_loss + classification_scale * cls_loss)
         else:
             self.manual_backward(aeloss)
         opt_ae.step()
@@ -295,6 +301,8 @@ class MultiheadSwinVQGAN(LightningModule):
         if self.classifier_head is not None and self.segmentation_decoder is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
                     "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
+        elif self.classifier_head is not None and self.segmentation_decoder is None:
+            return {"cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
         elif self.classifier_head is None and self.segmentation_decoder is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
@@ -311,6 +319,8 @@ class MultiheadSwinVQGAN(LightningModule):
         if self.segmentation_decoder is not None and self.classifier_head is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
                     "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
+        elif self.classifier_head is not None and self.segmentation_decoder is None:
+            return {"cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
         elif self.classifier_head is None and self.segmentation_decoder is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 
@@ -356,6 +366,8 @@ class MultiheadSwinVQGAN(LightningModule):
         if self.segmentation_decoder is not None and self.classifier_head is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets,
                     "cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
+        elif self.classifier_head is not None and self.segmentation_decoder is None:
+            return {"cls_loss": cls_loss, "cls_preds": cls_preds, "cls_targets": cls_targets}
         elif self.classifier_head is None and self.segmentation_decoder is not None:
             return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets}
 

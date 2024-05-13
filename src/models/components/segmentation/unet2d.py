@@ -7,14 +7,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class EncoderUNet2D(nn.Module):
+class UNet2D(nn.Module):
     def __init__(self,
             n_channels=1,
             n_classes=2,
             base_channel = 64,
             width_multiplier=1, \
             bilinear=True, \
-            use_ds_conv=False):
+            use_ds_conv=False,
+            **kwargs):
         """A simple 3D Unet, adapted from a 2D Unet from https://github.com/milesial/Pytorch-UNet/tree/master/unet
         Arguments:
           n_channels = number of input channels; 3 for RGB, 1 for grayscale input
@@ -26,7 +27,7 @@ class EncoderUNet2D(nn.Module):
           use_ds_conv = if True, we use depthwise-separable convolutional layers. in my experience, this is of little help. This
                   appears to be because with 3D data, the vast vast majority of GPU RAM is the input data/labels, not the params, so little
                   VRAM is saved by using ds_conv, and yet performance suffers."""
-        super(EncoderUNet2D, self).__init__()
+        super(UNet2D, self).__init__()
         # _channels = (16, 32, 64, 128, 256, 512)
         _channels = (base_channel, base_channel * 2, base_channel * 4, base_channel * 8, base_channel * 16)
         self.n_channels = n_channels
@@ -35,9 +36,9 @@ class EncoderUNet2D(nn.Module):
         self.bilinear = bilinear
         self.convtype = DepthwiseSeparableConv2d if use_ds_conv else nn.Conv2d
 
-        # self.inc = DoubleConv(n_channels, self.channels[0], conv_type=self.convtype)
-        # self.down1 = Down(self.channels[0], self.channels[1], conv_type=self.convtype)
-        # self.down2 = Down(self.channels[1], self.channels[2], conv_type=self.convtype)
+        self.inc = DoubleConv(n_channels, self.channels[0], conv_type=self.convtype)
+        self.down1 = Down(self.channels[0], self.channels[1], conv_type=self.convtype)
+        self.down2 = Down(self.channels[1], self.channels[2], conv_type=self.convtype)
         self.down3 = Down(self.channels[2], self.channels[3], conv_type=self.convtype)
         self.norm_act_3 = nn.Sequential(
             nn.BatchNorm2d(self.channels[2]),
@@ -54,31 +55,13 @@ class EncoderUNet2D(nn.Module):
         self.up3 = Up(self.channels[2], self.channels[1] // factor, bilinear)
         self.up4 = Up(self.channels[1], self.channels[0], bilinear)
         self.outc = OutConv(self.channels[0], n_classes)
-        # if n_classes == 1:
-        #   self.last_conv = nn.Sigmoid()
-        # elif n_classes == 2:
-        #   self.last_conv = nn.Softmax(dim=1)
 
     def forward(self, x):
-        from IPython import embed
-        embed()
-        x = self.conv_first(x)
-        hs = [x]
-        x_out = [x]
-        for i_level in range(self.num_resolutions):
-            for i_block in range(self.num_res_blocks):
-                h = self.down[i_level].block[i_block](hs[-1])
-                if len(self.down[i_level].attn) > 0:
-                    h = self.down[i_level].attn[i_block](h)
-                hs.append(h)
-            x_out.append(hs[-1])
-            if i_level != self.num_resolutions - 1:
-                hs.append(self.down[i_level].downsample(hs[-1]))
-        x1, _, x2, x3 = x_out
-        x4 = self.down3(self.norm_act_3(x3))
-        # x4 = self.down3(x3)
-        x5 = self.down4(self.norm_act_4(x4))
-        # x5 = self.down4(x4)
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
         x = self.up1(x5, x4)
         x = self.up2(x, x3)
         x = self.up3(x, x2)
@@ -174,16 +157,21 @@ if __name__ == "__main__":
     # Instantiate UNet model
     n_channels = 1  # Assuming grayscale input
     n_classes = 1   # Number of output classes
-    unet_model = EncoderUNet2D(
+    unet_model = UNet2D(
         n_channels,
         n_classes
     )
 
     # Generate a random input tensor
-    input_tensor = torch.randn(1, 1, 128, 128, 128)
+    input_tensor = torch.randn(1, 1, 128, 128)
 
     # Forward pass
     output = unet_model(input_tensor)
-
+    x1 = unet_model.inc(input_tensor)
+    print(x1.shape)
+    x2 = unet_model.down1(x1)
+    print(x2.shape)
+    x3 = unet_model.down2(x2)
+    print(x3.shape)
     # Print the shape of the output
     print("Output shape:", output.shape)

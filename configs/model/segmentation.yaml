@@ -1,20 +1,20 @@
 _target_: src.models.segmentation_module.SegmentationModule
 
 defaults:
-  # - net: origin_unetplusplus.yaml
+  - net: origin_unetplusplus.yaml
   - criterion: bce_lovasz.yaml
-net:
-  _target_: src.models.components.monai.swin_unetr.SwinUNETR
-  img_size: 128
-  in_channels: 1
-  out_channels: 2
-  spatial_dims: 2
-  feature_size: 48
+# net:
+#   _target_: src.models.components.monai.swin_unetr.SwinUNETR
+#   img_size: 128
+#   in_channels: 1
+#   out_channels: 2
+#   spatial_dims: 2
+#   feature_size: 48
 
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
-  lr: 0.01
+  lr: 0.0001
   weight_decay: 0.0
 
 scheduler:

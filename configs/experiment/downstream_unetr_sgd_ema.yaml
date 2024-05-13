@@ -6,7 +6,7 @@
 
 defaults:
   - override /data: lidc_2d
-  - override /model: segmentation
+  - override /model: downstream_segmentation_2d
   - override /callbacks: segmentation2d
   - override /trainer: default
   - override /logger: wandb
@@ -29,6 +29,12 @@ data:
 
 model:
   net:
+    # _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+    # img_size: 128
+    # in_channels: 1
+    # out_channels: 2
+    # spatial_dims: 2
+    # feature_size: 48
     _target_: src.models.components.monai.swin_unetr.SwinUNETR
     img_size: 128
     in_channels: 1
@@ -37,22 +43,25 @@ model:
     feature_size: 48
     use_checkpoint: true
 
+  autoencoder_path: "/work/hpc/pgl/lung-diffusion/outputs/swin_transformer_ae_f48/checkpoints/epoch_036.ckpt"
   criterion:
     _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
     # weight: [1.0, 1.0]
     weight: [1.0, 50.0]
 
   optimizer:
-    _target_: torch.optim.Adam
+    _target_: torch.optim.SGD
     _partial_: true
     lr: 0.01
     weight_decay: 0.0
-  use_ema: false
+    momentum: 0.9
+
+  use_ema: True
 
 logger: 
   wandb:
-    name: "unetr"
-    # id: 1y2kwyzb
+    name: "downstream_unetr_sgd_ema"
+    # id: 3aaj48q0
 
 callbacks:
   model_checkpoint:
@@ -64,4 +73,5 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_19-54-57/lung-thesis/1y2kwyzb/checkpoints/epoch=42-step=11180.ckpt"
+# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_12-32-05/lung-thesis/3aaj48q0/checkpoints/epoch=26-step=7020.ckpt"
+# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/downstream_unetr/lung-thesis/136y83gp/checkpoints/epoch=45-step=11960.ckpt"

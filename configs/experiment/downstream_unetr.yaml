@@ -17,6 +17,7 @@ task_name: "train_segmentation"
 data:
 #   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
   batch_size: 64
+  include_clean: True
 #   image_size: 128
 #   train_val_test_split: [80, 10, 10]
 #   nodules_only: True
@@ -28,12 +29,19 @@ data:
 
 model:
   net:
-    _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+    # _target_: src.models.components.segmentation.encoder_swin_unetr.SwinUNETR
+    # img_size: 128
+    # in_channels: 1
+    # out_channels: 2
+    # spatial_dims: 2
+    # feature_size: 48
+    _target_: src.models.components.monai.swin_unetr.SwinUNETR
     img_size: 128
     in_channels: 1
     out_channels: 2
     spatial_dims: 2
     feature_size: 48
+    use_checkpoint: true
 
   autoencoder_path: "/work/hpc/pgl/lung-diffusion/outputs/swin_transformer_ae_f48/checkpoints/epoch_036.ckpt"
   criterion:
@@ -49,7 +57,7 @@ model:
 
 logger: 
   wandb:
-    name: "ds_unetr - lr=0.01"
+    name: "ds_unetr"
     # id: 3aaj48q0
 
 callbacks:
@@ -62,5 +70,5 @@ trainer:
   max_epochs: 1000
   accelerator: gpu
 
-ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_12-32-05/lung-thesis/3aaj48q0/checkpoints/epoch=26-step=7020.ckpt"
-
+# ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-02_12-32-05/lung-thesis/3aaj48q0/checkpoints/epoch=26-step=7020.ckpt"
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/downstream_unetr/lung-thesis/136y83gp/checkpoints/epoch=45-step=11960.ckpt"

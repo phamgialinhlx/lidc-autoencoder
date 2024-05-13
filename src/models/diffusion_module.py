@@ -13,7 +13,7 @@ import rootutils
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from src.utils.ema import LitEma
-from src.models.vq_gan_3d_module import VQGAN
+from src.models.vq_gan_2d_module import VQGAN
 from src.models.swin_transformer_ae_module import SwinVQGAN
 from src.models.components.diffusion.sampler import BaseSampler
 from src.models.components.diffusion.sampler.ddpm import DDPMSampler
@@ -32,7 +32,18 @@ def load_autoencoder(ckpt_path, map_location="cuda", disable_decoder=False, eval
 
     except Exception as e:
         print(f"Failed to load SwinVQGAN from {ckpt_path}: {e}")
-        return None
+        try:
+            ae = VQGAN.load_from_checkpoint(checkpoint_path=ckpt_path, map_location=map_location)
+            if ae.use_ema:
+                ae.model_ema.store(ae.parameters())
+                ae.model_ema.copy_to(ae)
+            
+            # Disable the decoder if requested
+            if disable_decoder:
+                ae.decoder = None
+        except Exception as e:
+            print(f"Failed to load VQGAN from {ckpt_path}: {e}")
+            return None
     if eval:
         ae.eval()
         ae.freeze()
@@ -96,14 +107,15 @@ class DiffusionModule(LightningModule):
         if self.autoencoder is None:
             return x
         else:
-            if isinstance(self.autoencoder, VQGAN) or isinstance(self.autoencoder, SwinVQGAN):
-                x = self.autoencoder.encode(
-                    x, quantize=False, include_embeddings=True)
+            if isinstance(self.autoencoder, VQGAN):
+                quant, emb_loss, info = self.autoencoder.encode(x)
                 # normalize to -1 and 1
-                x = ((x - self.autoencoder.codebook.embeddings.min()) /
-                    (self.autoencoder.codebook.embeddings.max() -
-                    self.autoencoder.codebook.embeddings.min())) * 2.0 - 1.0
-                return x
+                # x = ((x - self.autoencoder.codebook.embeddings.min()) /
+                #     (self.autoencoder.codebook.embeddings.max() -
+                #     self.autoencoder.codebook.embeddings.min())) * 2.0 - 1.0
+                return quant
+            elif isinstance(self.autoencoder, SwinVQGAN):
+                return self.autoencoder.encode(x)[0]
             else:
                 return self.autoencoder.encode(x).sample()
             
@@ -112,20 +124,22 @@ class DiffusionModule(LightningModule):
         if self.autoencoder is None:
             return xt
         else:
-            if isinstance(self.autoencoder, VQGAN) or isinstance(self.autoencoder, SwinVQGAN):
+            if isinstance(self.autoencoder, VQGAN):
                 # denormalize TODO: Remove eventually
-                codebook_embeddings = self.autoencoder.codebook.embeddings
-                xt = (((xt + 1.0) / 2.0) * (codebook_embeddings.max() -
-                                        codebook_embeddings.min())) + codebook_embeddings.min()
+                # codebook_embeddings = self.autoencoder.quantize.embedding
+                # xt = (((xt + 1.0) / 2.0) * (codebook_embeddings.max() -
+                #                         codebook_embeddings.min())) + codebook_embeddings.min()
 
-                xt = self.autoencoder.decode(xt, quantize=True)
+                xt = self.autoencoder.decode(xt)
                 return xt
+            elif isinstance(self.autoencoder, SwinVQGAN):
+                return self.autoencoder.decode(xt)
             else:
                 raise NotImplementedError("Not implemented for VQGAN")
             
     def model_step(self, batch: Any):
         # images, labels = batch
-        images = batch['data']
+        images = batch['segmentation']
         latent = self.autoencoder_encode(images)
         return self.loss(latent)
 
@@ -229,18 +243,17 @@ class DiffusionModule(LightningModule):
             # generate sample by ema_model
             with self.ema_scope():
                 for i, t in enumerate(sample_steps):
-                    
                     t = torch.full((xt.shape[0],), t, device=device, dtype=torch.int64)
-                    model_output = self.net(x=xt, time=t, cond=cond)
+                    model_output = self.net(x=xt, timesteps=t, context=cond)
                     xt = self.sampler.reverse_step(
                         model_output, t, xt, noise, repeat_noise
                     )
         else:
             for i, t in enumerate(sample_steps):
                 t = torch.full((xt.shape[0],), t, device=device, dtype=torch.int64)
-                model_output = self.net(x=xt, time=t, cond=cond)
+                model_output = self.net(x=xt, timesteps=t, context=cond)
                 xt = self.sampler.reverse_step(
                     model_output, t, xt, noise, repeat_noise
                 )
         out_images = self.autoencoder_decode(xt)
-        return {"generate": out_images}
+        return out_images

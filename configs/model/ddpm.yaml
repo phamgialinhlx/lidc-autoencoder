@@ -1,9 +1,20 @@
 _target_: src.models.DiffusionModule
 
 defaults:
-  - net: unet3d.yaml
+  # - net: unet3d.yaml
   - sampler: ddpm.yaml
 
+net: 
+  _target_: src.models.components.diffusion.unet2d.UNetModel
+  image_size: 16
+  in_channels: 16
+  out_channels: 16
+  model_channels: 192
+  channel_mult: [1, 2, 4]
+  attention_resolutions: [1, 2, 4, 8]
+  num_heads: 8
+  num_res_blocks: 2
+  
 autoencoder_ckpt_path: ""
 
 optimizer:

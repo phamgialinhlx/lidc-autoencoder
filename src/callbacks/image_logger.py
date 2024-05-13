@@ -21,7 +21,7 @@ class ImageLogger(Callback):
     ) -> None:
         self.count += 1
         if self.count % self.frequency == 0:
-            origin = next(iter(trainer.val_dataloaders))['segmentation'].to(pl_module.device)
+            origin = next(iter(trainer.val_dataloaders))[self.input_key].to(pl_module.device)
 
             image = pl_module.log_image(origin, device=pl_module.device)
 

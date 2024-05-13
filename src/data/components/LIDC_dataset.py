@@ -7,7 +7,7 @@ import torchvision
 import glob
 
 class LIDC_IDRI_Dataset(Dataset):
-    def __init__(self, nodule_path, clean_path, mode, transforms=None, img_size=128):
+    def __init__(self, nodule_path, clean_path, mode, transforms=None, img_size=128, include_label=False):
 
         # nodule_path: path to dataset nodule image folder
         # clean_path: path to dataset clean image folder
@@ -27,7 +27,7 @@ class LIDC_IDRI_Dataset(Dataset):
         # define function to get list of (image, mask)
         self.file_list = self.get_paths(self.nodule_path, nodule=True)
         self.file_list += self.get_paths(self.clean_path, nodule=False)
-
+        self.include_label = include_label
         print(len(self.file_list))
 
     def __len__(self):
@@ -57,10 +57,19 @@ class LIDC_IDRI_Dataset(Dataset):
         # mask = mask.unsqueeze(0)
         # if image.min() - image.max() == 0:
             # print(f_image)
-        return {
-            'segmentation': image,
-            'mask': mask
-        }
+        
+        if self.include_label:
+            label = 1 if "NI" in f_image else 0
+            return {
+                'segmentation': image,
+                'mask': mask,
+                'label': label
+            }
+        else:
+            return {
+                'segmentation': image,
+                'mask': mask,
+            }
 
     def _normalize_image(self, image):
         min_val = np.min(image)

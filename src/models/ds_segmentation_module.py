@@ -1,20 +1,18 @@
 import rootutils
-
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-import gc
 from contextlib import contextmanager
 from typing import Any, List
-
+import gc
 import hydra
 import torch
-import torch.nn.functional as F
-from lightning import LightningModule
 from omegaconf import DictConfig
+from lightning import LightningModule
 from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 
 from src.models.components.loss_function.lossbinary import LossBinary
 from src.models.components.loss_function.lovasz_loss import BCE_Lovasz
+import torch.nn.functional as F
 from src.models.utils.autoencoder import load_encoder
 from src.utils.ema import LitEma
 
@@ -36,8 +34,10 @@ class DownstreamSegmentationModule(LightningModule):
         self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
 
         self.net = net
-        self.encoder = load_encoder(autoencoder_path)
-
+        if hasattr(self.net, "swin_encoder"):
+            self.net.swin_encoder.swinViT = load_encoder(autoencoder_path)
+        else:
+            self.net.encoder = load_encoder(autoencoder_path)
         # loss function
         self.criterion = criterion
 
@@ -78,8 +78,7 @@ class DownstreamSegmentationModule(LightningModule):
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
-        
-        logits = self.net(self.encoder, x)
+        logits = self.net(x)
         if self.net.n_classes == 2:
             loss = self.criterion(logits, y.squeeze(1))
             preds = torch.argmax(logits, dim=1).unsqueeze(0)
@@ -101,14 +100,17 @@ class DownstreamSegmentationModule(LightningModule):
 
     def training_step(self, batch: Any, batch_idx: int):
         seg_loss, seg_preds, seg_targets = self.model_step(batch)
+        # seg_loss = 25 * seg_loss
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
-        seg_loss, seg_preds, seg_targets = self.model_step(batch)
+        with self.ema_scope():
+            seg_loss, seg_preds, seg_targets = self.model_step(batch)
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}
 
     def test_step(self, batch: Any, batch_idx: int):
-        seg_loss, seg_preds, seg_targets = self.model_step(batch)
+        with self.ema_scope():
+            seg_loss, seg_preds, seg_targets = self.model_step(batch)
 
         # update and log metrics
         return {"seg_loss": seg_loss, "seg_preds": seg_preds, "seg_targets": seg_targets, "loss": seg_loss}

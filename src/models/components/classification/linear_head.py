@@ -8,9 +8,10 @@ class LinearHead(nn.Module):
         self.fc = nn.Linear(in_features, num_classes)
 
     def forward(self, x):
-        x = x.view(x.size(0), -1)
+        x = x.reshape(x.size(0), -1)
         x = self.fc(x)
-        return F.softmax(x, dim=1)
+        return x
+        # return F.softmax(x, dim=1)
     
 if __name__ == "__main__":
     x = torch.randn(20, 8, 32, 32, 32)

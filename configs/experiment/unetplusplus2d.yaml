@@ -14,9 +14,9 @@ defaults:
 tags: ["segmentation", "lidc"]
 task_name: "train_segmentation"
 
-# data:
+data:
 #   data_dir: "/data/hpc/pgl/LIDC-IDRI-2D/data/"
-#   batch_size: 16
+  batch_size: 32
 #   image_size: 128
 #   train_val_test_split: [80, 10, 10]
 #   nodules_only: True
@@ -53,11 +53,15 @@ model:
   criterion:
     _target_: src.models.components.loss_function.cross_entropy.CrossEntropyLoss
     weight: [1.0, 50.0]
-
+  optimizer:
+    _target_: torch.optim.Adam
+    _partial_: true
+    lr: 0.001
+    weight_decay: 0.0
 logger: 
   wandb:
     name: "origin_unetplusplus2d"
-    id: 18gpp1mp
+    id: p23uajld
 
 callbacks:
   model_checkpoint:
@@ -70,3 +74,5 @@ trainer:
   accelerator: gpu
 
   # precision: 16-mixed
+
+ckpt_path: "/work/hpc/pgl/lung-diffusion/logs/train_segmentation/runs/2024-05-10_23-55-57/lung-thesis/p23uajld/checkpoints/epoch=16-step=8823.ckpt"
