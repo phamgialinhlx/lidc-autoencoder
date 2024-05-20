@@ -81,7 +81,6 @@ class LIDCDataModule(LightningDataModule):
         # get num train, val, test
         num_train = int(num_files * train_ratio / (train_ratio + val_ratio + test_ratio))
         num_val = int(num_files * val_ratio / (train_ratio + val_ratio + test_ratio))
-
         # get random index
         train_paths = list(np.random.choice(file_paths, num_train, replace=False))
         val_paths = list(np.random.choice(list(set(file_paths) - set(train_paths)), num_val, replace=False))
@@ -90,7 +89,7 @@ class LIDCDataModule(LightningDataModule):
     
     @property
     def num_classes(self):
-        return 4
+        return 2
 
     def train_dataloader(self):
         return DataLoader(
