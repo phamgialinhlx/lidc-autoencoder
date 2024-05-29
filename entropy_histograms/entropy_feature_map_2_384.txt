@@ -1,0 +1,1 @@
+Entropy of feature map 2_384: 6.0

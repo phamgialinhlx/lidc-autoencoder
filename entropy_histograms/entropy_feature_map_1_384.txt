@@ -1,0 +1,1 @@
+Entropy of feature map 1_384: 5.965278185525208

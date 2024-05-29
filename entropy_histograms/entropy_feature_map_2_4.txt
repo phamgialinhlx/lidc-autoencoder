@@ -1,0 +1,1 @@
+Entropy of feature map 2_4: 6.085389981299931

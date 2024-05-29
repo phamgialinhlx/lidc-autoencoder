@@ -1,0 +1,1 @@
+Entropy of feature map 1_768: 3.016849553839189
