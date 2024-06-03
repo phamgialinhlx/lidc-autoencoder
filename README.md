@@ -104,6 +104,13 @@ python src/train_diffusion.py experiment=swin_transformer_ae
 - (1) Segmentation loss factor β = 1.
 - (2) Segmentation loss factor β = 25.
 
+<table>
+  <tr>
+    <td><img src="assets/feature_map_downstream_seg.png" alt="Image 1" width="300"><br><p align="center">Feature maps from downstream segmentation model</p></td>
+    <td><img src="assets/feature_map_multihead.png" alt="Image 2" width="300"><br><p align="center">Feature maps from multihead autoencoder model</p></td>
+  </tr>
+</table>
+
 
 ### Evaluating the Classification Performance of Multihead Approach Compared to Other Methods
 
