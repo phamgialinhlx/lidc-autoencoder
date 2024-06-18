@@ -53,6 +53,18 @@ python src/train_diffusion.py experiment=swin_transformer_ae
 
 ## Experiment results
 ### Reconstruction performance on different backbone
+
+<table>
+  <tr>
+    <td><img src="assets/reconstruction/rec_input.png" alt="Image 1" width="300"><br><p align="center">Image samples </p></td>
+    <td><img src="assets/reconstruction/cnn_attention_output.png" alt="Image 1" width="300"><br><p align="center">Samples of cnn-attention
+  backbone autoencoder</p></td>
+    <td><img src="assets/reconstruction/swin_transformer_output.png" alt="Image 2" width="300"><br><p align="center">Samples of swin-transformer
+backbone autoencoder</p></td>
+  </tr>
+</table>
+
+
 | Backbone | SSIM | PSNR |
 |----------|------|------|
 | swin_transformer | 0.9715 | 36.568 |
@@ -92,6 +104,26 @@ python src/train_diffusion.py experiment=swin_transformer_ae
 
 ### Evaluating the Segmentation Performance of Multihead Approach Compared to Other Methods
 
+<table>
+  <tr>
+    <th>Image samples</th>
+    <th>Corresponding Masks</th>
+  </tr>
+  <tr>
+    <td><img src="assets/loss_factor/mask_input.png" alt="Image 1" width="300"/></td>
+    <td><img src="assets/loss_factor/mask_gt.png" alt="Image 1" width="300"/></td>
+  </tr>
+  <tr>
+    <th>Masks predicted by multihead_baseline (cls/seg) (1)</th>
+    <th>Masks predicted by multihead_baseline (cls/seg) (2)</th>
+  </tr>
+  <tr>
+    <td><img src="assets/loss_factor/mask_beta_1.png" alt="Image 1" width="300"/></td>
+    <td><img src="assets/loss_factor/mask_beta_25.png" alt="Image 1" width="300"/></td>
+  </tr>
+</table>
+
+
 | Experiment | Dice | Jaccard |
 |------------|------|---------|
 | downstream_seg_baseline | 0.7903 | 0.6533 |
@@ -121,6 +153,17 @@ python src/train_diffusion.py experiment=swin_transformer_ae
 | multihead_baseline (cls/seg) | 0.9985 | 0.9985 | 0.9842 | 0.9913 |
 
 ### Generation performance on different backbone
+
+<table>
+  <tr>
+    <td><img src="assets/generation/originSamples.jpg" alt="Image 1" width="300"><br><p align="center">Image samples </p></td>
+    <td><img src="assets/generation/cnnAttnSamples.jpg" alt="Image 1" width="300"><br><p align="center">Samples of cnn-attention
+  backbone autoencoder</p></td>
+    <td><img src="assets/generation/swinTransformerSamples.jpg" alt="Image 2" width="300"><br><p align="center">Samples of swin-transformer
+backbone autoencoder</p></td>
+  </tr>
+</table>
+
 | Experiment | FID |
 |------------|-----|
 | swin-transformer | 15.41 |
