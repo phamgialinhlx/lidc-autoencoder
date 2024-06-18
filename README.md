@@ -12,7 +12,7 @@
 
 ## Description
 
-Codebase of my thesis
+This repository contains implementations of autoencoders applied to classification, segmentation, and generation tasks. For classification and segmentation, the encoder of the autoencoder serves as a pretrained backbone. Conversely, for generation tasks, the autoencoder acts as a semantic compression module, aiding in the generation process within the latent space. The proposed approach shows impressive results. Additionally, the repository includes a multihead autoencoder that helps in understanding the latent space when encoding multiple tasks simultaneously.
 
 ## How to run
 
